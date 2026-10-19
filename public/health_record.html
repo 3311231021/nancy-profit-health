@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>健康紀錄（BMI 計算）</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-top: 20px;
+        }
+
+        input {
+            width: 200px;
+            padding: 8px;
+            margin: 5px 0 15px 0;
+            display: block;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #history div {
+            margin-bottom: 8px;
+            padding: 6px;
+            background: #f4f4f4;
+            border-radius: 4px;
+        }
+    </style>
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body class="site-page compact-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="dashboard.html">總覽</a><a href="activity.html">運動紀錄</a><a href="health_record.html" aria-current="page">健康紀錄</a><a href="courses.html">購買課程</a><a href="my_courses.html">我的課程</a></nav></header>
+<main id="main-content" class="app-main">
+
+
+<h2>健康紀錄（BMI 計算）</h2>
+
+<label>身高 (cm)</label>
+<input type="number" id="height" placeholder="請輸入身高">
+
+<label>體重 (kg)</label>
+<input type="number" id="weight" placeholder="請輸入體重">
+
+<button onclick="saveRecord()">儲存紀錄</button>
+
+<hr>
+
+<h2>歷史紀錄</h2>
+<div id="history">讀取中...</div>
+
+<button onclick="window.location.href='dashboard.html'">回首頁</button>
+
+<script>
+// -----------------------------------------
+// ⭐ 儲存 BMI 紀錄（POST /api/health_records）
+// -----------------------------------------
+async function saveRecord() {
+    const height = document.getElementById("height").value;
+    const weight = document.getElementById("weight").value;
+
+    if (!height || !weight) {
+        alert("請輸入身高與體重！");
+        return;
+    }
+
+    // 計算 BMI
+    const bmi = (weight / ((height / 100) ** 2)).toFixed(2);
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+        alert("尚未登入！");
+        return;
+    }
+
+    const res = await fetch("/api/health_records", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+            height: Number(height),
+            weight: Number(weight),
+            bmi: Number(bmi)
+        })
+    });
+
+    const data = await res.json();
+
+    alert(data.message);
+    loadRecords(); // 儲存後重新載入紀錄
+}
+
+
+// -----------------------------------------
+// ⭐ 載入健康紀錄（GET /api/health_records）
+// -----------------------------------------
+async function loadRecords() {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch("/api/health_records", {
+        method: "GET",
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    });
+
+    const records = await res.json();
+
+    const list = document.getElementById("history");
+    list.innerHTML = ""; // 清空
+
+    if (!records || records.length === 0) {
+        list.innerHTML = "目前沒有紀錄";
+        return;
+    }
+
+    records.forEach(r => {
+        const div = document.createElement("div");
+        div.textContent = `${r.created_at}｜身高：${r.height}cm｜體重：${r.weight}kg｜BMI：${r.bmi}`;
+        list.appendChild(div);
+    });
+}
+
+// 進入頁面就載入歷史紀錄
+loadRecords();
+
+</script>
+
+</main>
+<footer class="site-footer"><span>ProFit Health · 陪你累積每一天的進步</span><span>運動紀錄 ／ 健康管理 ／ 專業陪伴</span></footer>
+</body>
+</html>

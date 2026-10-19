@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProFit Health｜專家資料維護（Admin）</title>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Arial, sans-serif; background:#f4f7fb; color:#111827; }
+    .topbar{
+      background:#fff; border-bottom:1px solid #e5e7eb;
+      padding:14px 18px; display:flex; align-items:center; justify-content:space-between;
+      gap: 10px;
+    }
+    .brand h1{ margin:0; font-size:20px; font-weight:900; }
+    .brand small{ display:block; margin-top:4px; color:#6b7280; font-weight:700; }
+    .actions{ display:flex; gap:10px; flex-wrap: wrap; }
+    button{
+      border:none; border-radius:12px; padding:10px 14px; cursor:pointer;
+      font-weight:900;
+    }
+    button.primary{ background:#f59e0b; color:#111827; }
+    button.secondary{ background:#eef2f7; color:#111827; }
+    button.danger{ background:#111827; color:#fff; }
+    button.softDanger{ background:#ef4444; color:#fff; }
+    button.soft{ background:#0d6efd; color:#fff; }
+    button:disabled{ opacity:.6; cursor:not-allowed; }
+    button:hover{ opacity:.95; }
+
+    .wrap{ max-width: 1100px; margin:18px auto; padding:0 16px 28px; }
+    .card{
+      background:#fff; border-radius:16px; box-shadow:0 10px 28px rgba(0,0,0,.08);
+      padding:16px; margin-top:14px;
+    }
+    .sectionTitle{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .sectionTitle h2{ margin:0; font-size:16px; font-weight:900; }
+    .pill{
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      background:#eef2f7; color:#111827; font-weight:900;
+      white-space: nowrap;
+    }
+
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items: end; }
+    .field{ flex: 1; min-width: 190px; }
+    label{ display:block; font-size:12px; color:#6b7280; font-weight:900; margin-bottom:6px; }
+    select, input{
+      width:100%; padding:12px; border:1px solid #d1d5db; border-radius:12px;
+      outline:none; font-size:14px; background:#fff;
+    }
+    select:focus, input:focus{
+      border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.15);
+    }
+
+    table{ width:100%; border-collapse: collapse; margin-top:8px; }
+    th, td{ text-align:left; padding:10px 8px; border-bottom:1px solid #e5e7eb; font-size:14px; vertical-align: top; }
+    th{ font-size:13px; color:#374151; font-weight:900; }
+    .muted{ color:#6b7280; font-weight:800; font-size:13px; }
+    .warn{ color:#b45309; font-weight:900; }
+    .ok{ color:#0f766e; font-weight:900; }
+    .err{ margin-top:10px; color:#b91c1c; font-weight:900; white-space:pre-wrap; }
+
+    .tag{
+      display:inline-block; font-size:12px; font-weight:900;
+      padding:6px 10px; border-radius:999px; background:#eef2f7; color:#111827;
+    }
+    .tag.active{ background: rgba(16,185,129,.12); color:#065f46; }
+    .tag.inactive{ background: rgba(239,68,68,.12); color:#991b1b; }
+
+    .ops{ display:flex; gap:8px; flex-wrap:wrap; }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <h1>專家資料維護（Admin）</h1>
+      <small id="subTitle">載入中…</small>
+    </div>
+
+    <div class="actions">
+      <a href="payroll.html">出勤與薪資</a>
+      <button class="secondary" id="btnBack" type="button">回 Dashboard</button>
+      <button class="secondary" id="btnRefresh" type="button">重新整理</button>
+      <button class="danger" id="btnLogout" type="button">登出</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <!-- Create Expert -->
+    <div class="card">
+      <div class="sectionTitle">
+        <h2>新增專業人員</h2>
+        <span class="pill" id="createPill">ready</span>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>姓名（username）</label>
+          <input id="newName" placeholder="例如 Andy">
+        </div>
+
+        <div class="field">
+          <label>Email</label>
+          <input id="newEmail" type="email" placeholder="andy@abc.com">
+        </div>
+
+        <div class="field">
+          <label>密碼</label>
+          <input id="newPassword" type="password" placeholder="至少 12 個字元">
+        </div>
+
+        <div class="field" style="min-width:170px;">
+          <label>專業類型（specialty）</label>
+          <select id="newSpecialty">
+            <option value="coach">教練 (coach)</option>
+            <option value="doctor">醫師 (doctor)</option>
+            <option value="pt">物理治療師 (pt)</option>
+            <option value="at">運動防護員 (at)</option>
+          </select>
+        </div>
+
+        <div class="field"><label for="newPayType">計薪方式（本月）</label><select id="newPayType"><option value="">暫不設定</option><option value="hourly">兼職時薪</option><option value="monthly">固定月薪</option><option value="lesson">按堂計酬</option></select></div>
+        <div class="field"><label for="newPayRate">金額（NT$／小時、月或堂）</label><input id="newPayRate" type="number" min="0" max="99999999" step="0.01" placeholder="依選擇方式填寫"></div>
+        <div class="field" style="min-width:140px; flex:0 0 140px;">
+          <label>&nbsp;</label>
+          <button class="primary" id="btnCreate" type="button" style="width:100%;">新增</button>
+        </div>
+      </div>
+
+      <div class="muted" style="margin-top:10px;">
+        可同時設定本月計薪方式；其他月份及確認授課堂數請至「出勤與薪資」設定。
+      </div>
+
+      <div class="err" id="errBox"></div>
+    </div>
+
+    <!-- Expert List -->
+    <div class="card">
+      <div class="sectionTitle">
+        <h2>專家清單</h2>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:900; color:#374151; margin:0;">
+            <input type="checkbox" id="chkShowInactive" />
+            顯示停用
+          </label>
+          <span class="pill" id="countPill">0 位</span>
+        </div>
+      </div>
+
+      <div class="muted">
+        若出現 <span class="warn">specialty/title = -</span>，代表該 expert 缺少 expert_profiles（通常是你用別方式建立了 users 但沒建立 profile）。
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>expert_user_id</th>
+            <th>username</th>
+            <th>email</th>
+            <th>status</th>
+            <th>specialty</th>
+            <th>title</th>
+            <th>備註</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    const API_BASE = "";
+
+    const subTitle = document.getElementById("subTitle");
+    const errBox = document.getElementById("errBox");
+    const createPill = document.getElementById("createPill");
+
+    const newName = document.getElementById("newName");
+    const newEmail = document.getElementById("newEmail");
+    const newPassword = document.getElementById("newPassword");
+    const newSpecialty = document.getElementById("newSpecialty");
+
+    const tbody = document.getElementById("tbody");
+    const countPill = document.getElementById("countPill");
+    const chkShowInactive = document.getElementById("chkShowInactive");
+
+    function setErr(msg){ errBox.textContent = msg || ""; }
+    function getToken(){ return localStorage.getItem("token"); }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    async function apiFetch(path, options = {}) {
+      const token = getToken();
+      const res = await fetch(API_BASE + path, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+          "Authorization": "Bearer " + token
+        }
+      });
+      const data = await res.json().catch(()=> ({}));
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    async function guardAdmin(){
+      const token = getToken();
+      if (!token) return location.href = "auth.html";
+
+      const meRes = await fetch(API_BASE + "/api/me", {
+        headers: { Authorization: "Bearer " + token }
+      });
+      const me = await meRes.json().catch(()=> ({}));
+
+      if (!meRes.ok) {
+        localStorage.removeItem("token");
+        return location.href = "auth.html";
+      }
+
+      if (me.role !== "admin") {
+        if (me.role === "expert") location.href = "expert_dashboard.html";
+        else location.href = "dashboard.html";
+        return;
+      }
+
+      subTitle.textContent = `管理員：${me.username}（${me.email}）`;
+    }
+
+    function statusTag(s){
+      const v = (s || "active").toLowerCase();
+      if (v === "inactive") return `<span class="tag inactive">inactive</span>`;
+      return `<span class="tag active">active</span>`;
+    }
+
+    function renderExperts(rows){
+      countPill.textContent = `${rows.length} 位`;
+      tbody.innerHTML = rows.map(r => {
+        const missingProfile = !r.specialty || !r.title;
+        const st = (r.status || "active").toLowerCase();
+
+        const btnDisable = `
+          <button class="softDanger" type="button"
+            data-action="disable" data-id="${r.expert_user_id}"
+            ${st === "inactive" ? "disabled" : ""}>
+            停用
+          </button>
+        `;
+        const btnEnable = `
+          <button class="soft" type="button"
+            data-action="enable" data-id="${r.expert_user_id}"
+            ${st === "active" ? "disabled" : ""}>
+            啟用
+          </button>
+        `;
+
+        return `
+          <tr>
+            <td>${r.expert_user_id}</td>
+            <td>${escapeHtml(r.username || "-")}</td>
+            <td>${escapeHtml(r.email || "-")}</td>
+            <td>${statusTag(r.status)}</td>
+            <td>${escapeHtml(r.specialty || "-")}</td>
+            <td>${escapeHtml(r.title || "-")}</td>
+            <td>${missingProfile ? `<span class="warn">缺 expert_profiles</span>` : `<span class="ok">OK</span>`}</td>
+            <td>
+              <div class="ops">
+                ${btnDisable}
+                ${btnEnable}
+              </div>
+              <div class="muted" style="margin-top:6px;">建議用停用，不建議硬刪除</div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      // 綁定操作按鈕（事件委派）
+      tbody.querySelectorAll("button[data-action]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const action = btn.dataset.action;
+          const id = Number(btn.dataset.id);
+          if (!id) return;
+
+          const name = btn.closest("tr")?.children?.[1]?.innerText || ("ID " + id);
+          if (action === "disable") {
+            if (!confirm(`確定要停用：${name} ?`)) return;
+            await disableUser(id);
+          } else if (action === "enable") {
+            if (!confirm(`確定要啟用：${name} ?`)) return;
+            await enableUser(id);
+          }
+        });
+      });
+    }
+
+    async function loadExperts(){
+      const includeInactive = chkShowInactive.checked ? "1" : "0";
+      const r = await apiFetch(`/api/admin/experts?include_inactive=${includeInactive}`);
+      if (!r.ok) throw new Error((r.data?.message || "讀取專家清單失敗") + "\n" + (r.data?.error || ""));
+      renderExperts(Array.isArray(r.data) ? r.data : []);
+    }
+
+    async function createExpert(){
+      setErr("");
+      const username = newName.value.trim();
+      const email = newEmail.value.trim();
+      const password = newPassword.value;
+      const specialty = newSpecialty.value;
+
+      if (!username || !email || !password) {
+        return setErr("請填：姓名 / Email / 密碼");
+      }
+
+      createPill.textContent = "sending...";
+      const r = await apiFetch("/api/admin/experts", {
+        method: "POST",
+        body: JSON.stringify({ username, email, password, specialty, payroll: document.getElementById("newPayType").value ? {pay_type:document.getElementById("newPayType").value,rate:document.getElementById("newPayRate").value === "" ? null : Number(document.getElementById("newPayRate").value)} : undefined })
+      });
+
+      if (!r.ok) {
+        createPill.textContent = "error";
+        return setErr(`${r.data?.message || "新增失敗"}\n${r.data?.error || ""}`);
+      }
+
+      createPill.textContent = "done";
+      alert("新增專業人員成功");
+
+      newName.value = "";
+      newEmail.value = "";
+      newPassword.value = "";
+
+      await loadExperts();
+      createPill.textContent = "ready";
+    }
+
+    async function disableUser(id){
+      const r = await apiFetch(`/api/admin/users/${id}/disable`, { method: "PATCH" });
+      if (!r.ok) {
+        alert(`停用失敗：${r.data?.message || ""}\n${r.data?.error || ""}`);
+        return;
+      }
+      await loadExperts();
+      alert("已停用");
+    }
+
+    async function enableUser(id){
+      const r = await apiFetch(`/api/admin/users/${id}/enable`, { method: "PATCH" });
+      if (!r.ok) {
+        alert(`啟用失敗：${r.data?.message || ""}\n${r.data?.error || ""}`);
+        return;
+      }
+      await loadExperts();
+      alert("已啟用");
+    }
+
+    document.getElementById("btnLogout").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      location.href = "auth.html";
+    });
+    document.getElementById("btnBack").addEventListener("click", () => {
+      location.href = "admin_dashboard.html";
+    });
+    document.getElementById("btnRefresh").addEventListener("click", loadExperts);
+    document.getElementById("btnCreate").addEventListener("click", createExpert);
+    chkShowInactive.addEventListener("change", loadExperts);
+
+    (async function init(){
+      await guardAdmin();
+      await loadExperts();
+    })();
+  </script>
+</body>
+</html>
+

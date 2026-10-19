@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProFit Health｜管理員 Dashboard</title>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Arial, sans-serif; background:#f4f7fb; color:#111827; }
+    .topbar{
+      background:#fff; border-bottom:1px solid #e5e7eb;
+      padding:14px 18px; display:flex; align-items:center; justify-content:space-between;
+    }
+    .brand h1{ margin:0; font-size:22px; font-weight:900; }
+    .brand small{ display:block; margin-top:4px; color:#6b7280; font-weight:700; }
+    .actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    button{
+      border:none; border-radius:12px; padding:10px 14px; cursor:pointer;
+      font-weight:900;
+    }
+    button.primary{ background:#f59e0b; color:#111827; }
+    button.secondary{ background:#eef2f7; color:#111827; }
+    button.danger{ background:#111827; color:#fff; }
+    button:hover{ opacity:.95; }
+
+    .wrap{ max-width: 1100px; margin:18px auto; padding:0 16px 28px; }
+    .grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap:14px; }
+    .card{
+      background:#fff; border-radius:16px; box-shadow:0 10px 28px rgba(0,0,0,.08);
+      padding:16px; margin-top:14px;
+    }
+    .full{ grid-column: span 12; }
+    @media (min-width: 920px){
+      .left{ grid-column: span 5; }
+      .right{ grid-column: span 7; }
+    }
+
+    .sectionTitle{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .sectionTitle h2{ margin:0; font-size:16px; font-weight:900; }
+    .pill{
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      background:#eef2f7; color:#111827; font-weight:900;
+    }
+
+    .row{ display:flex; gap:10px; flex-wrap:wrap; }
+    .field{ flex: 1; min-width: 180px; }
+    label{ display:block; font-size:12px; color:#6b7280; font-weight:900; margin-bottom:6px; }
+    select, input{
+      width:100%; padding:12px; border:1px solid #d1d5db; border-radius:12px;
+      outline:none; font-size:14px; background:#fff;
+    }
+    select:focus, input:focus{
+      border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.15);
+    }
+
+    table{ width:100%; border-collapse: collapse; margin-top:8px; }
+    th, td{ text-align:left; padding:10px 8px; border-bottom:1px solid #e5e7eb; font-size:14px; }
+    th{ font-size:13px; color:#374151; font-weight:900; }
+    .muted{ color:#6b7280; font-weight:800; font-size:13px; }
+    .err{ margin-top:10px; color:#b91c1c; font-weight:900; white-space:pre-wrap; }
+    a.link{ color:#0d6efd; text-decoration:none; font-weight:900; }
+    a.link:hover{ text-decoration:underline; }
+  </style>
+</head>
+
+<body>
+
+  <div class="topbar">
+    <div class="brand">
+      <h1>管理員 Dashboard</h1>
+      <small id="subTitle">載入中…</small>
+    </div>
+
+    <div class="actions">
+      <button class="secondary" type="button" onclick="location.href='admin_courses.html'">課程管理</button>
+      <button class="secondary" type="button" onclick="location.href='admin_sales.html'">銷售統計</button>
+      <a href="payroll.html">出勤與薪資</a><button class="secondary" type="button" onclick="location.href='checkin.html'">QR Code 核銷</button>
+      <button class="secondary" id="btnManageExperts" type="button">專家資料維護</button>
+      <button class="secondary" id="btnRefresh" type="button">重新整理</button>
+      <button class="danger" id="btnLogout" type="button">登出</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="grid">
+
+      <div class="card full">
+        <div class="sectionTitle"><h2>下載專案原始碼</h2><span class="pill">管理員專用</span></div>
+        <p class="muted">下載此版本的完整程式碼 ZIP，包含前端、後端、部署設定及資料庫 migration。解壓縮後可上傳至 GitHub；不包含會員資料、密碼或環境變數。</p>
+        <button class="primary" id="btnDownloadSource" type="button">下載完整專案 ZIP</button>
+        <p id="sourceDownloadStatus" role="status" aria-live="polite" class="muted"></p>
+      </div>
+
+      <!-- Quick Assign -->
+      <div class="card left full">
+        <div class="sectionTitle">
+          <h2>配對專家與學員</h2>
+          <span class="pill" id="assignPill">ready</span>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>學員</label>
+            <select id="clientSelect"></select>
+          </div>
+
+          <div class="field">
+            <label>指導的專家（教練 / 醫師 / 物理治療師 / 運動防護員）</label>
+            <select id="expertSelect"></select>
+          </div>
+
+          <div class="field" style="min-width:140px; flex:0 0 140px;">
+            <label>狀態</label>
+            <select id="statusSelect">
+              <option value="active">指導中</option>
+              <option value="ended">結束指導</option>
+            </select>
+          </div>
+
+          <div class="field" style="min-width:120px; flex:0 0 120px;">
+            <label>&nbsp;</label>
+            <button class="primary" id="btnAssign" type="button" style="width:100%;">送出</button>
+          </div>
+        </div>
+
+        <div class="muted" style="margin-top:10px;">
+          配對後，該專家登入即可在「我的個案」看到這位學員的運動與健康資料、指派任務、給予回饋，並回覆學員的提問。一位學員可以配對多位專家。
+        </div>
+
+        <div class="err" id="errBox"></div>
+      </div>
+
+      <!-- Pairings Table -->
+      <div class="card full">
+        <div class="sectionTitle">
+          <h2>目前配對</h2>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin:0;">
+              <input type="checkbox" id="chkShowEnded" style="width:auto;" />
+              顯示已結束
+            </label>
+            <span class="pill" id="pairCount">0 組</span>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>專家</th>
+              <th>學員</th>
+              <th>狀態</th>
+              <th>已指派任務</th>
+              <th>待回覆提問</th>
+              <th>配對時間</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="pairTbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Experts Table -->
+      <div class="card right full">
+        <div class="sectionTitle">
+          <h2>專家清單</h2>
+          <span class="pill" id="expertCount">0 位</span>
+        </div>
+
+        <div class="muted">
+          specialty/title 若顯示「-」，代表該 expert 缺少 expert_profiles（請到「專家資料維護」用新增流程建立）。
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>expert_user_id</th>
+              <th>username</th>
+              <th>email</th>
+              <th>specialty</th>
+              <th>title</th>
+            </tr>
+          </thead>
+          <tbody id="expertTbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Strava 串接 -->
+      <div class="card full">
+        <div class="sectionTitle">
+          <h2>Strava 運動手錶串接</h2>
+          <span class="pill" id="stravaPill">讀取中</span>
+        </div>
+        <div class="muted" id="stravaInfo"></div>
+        <div style="margin-top:12px;">
+          <button class="primary" id="btnStravaWebhook" type="button" hidden>啟用自動同步（Webhook）</button>
+        </div>
+        <div class="muted" id="stravaMsg" style="margin-top:8px;"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "";
+
+    const subTitle = document.getElementById("subTitle");
+    const errBox = document.getElementById("errBox");
+    const assignPill = document.getElementById("assignPill");
+
+    const clientSelect = document.getElementById("clientSelect");
+    const expertSelect = document.getElementById("expertSelect");
+    const statusSelect = document.getElementById("statusSelect");
+
+    const expertTbody = document.getElementById("expertTbody");
+    const pairTbody = document.getElementById("pairTbody");
+    const pairCount = document.getElementById("pairCount");
+    const chkShowEnded = document.getElementById("chkShowEnded");
+    let cachedPairs = [];
+    const expertCount = document.getElementById("expertCount");
+
+    function setErr(msg){ errBox.textContent = msg || ""; }
+    function getToken(){ return localStorage.getItem("token"); }
+
+    document.getElementById("btnDownloadSource").addEventListener("click", async () => {
+      const button = document.getElementById("btnDownloadSource");
+      const status = document.getElementById("sourceDownloadStatus");
+      button.disabled = true;
+      status.textContent = "正在準備下載…";
+      try {
+        const response = await fetch("/api/admin/source-code", {
+          headers: { Authorization: "Bearer " + (getToken() || "") },
+          cache: "no-store"
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(response.status === 401 || response.status === 403 ? "請使用管理員帳號重新登入後下載。" : data.message || "下載失敗，請稍後再試。");
+        }
+        if (!response.headers.get("content-type")?.includes("application/zip")) throw new Error("下載服務尚未更新，請確認最新版本已發布。");
+        const blob = await response.blob();
+        if (!blob.size) throw new Error("壓縮檔是空的，請稍後再試。");
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "nancy-profit-health-source.zip";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        status.textContent = "已開始下載。解壓縮後，將裡面的檔案和資料夾上傳至 GitHub，讓 package.json 位於最外層。";
+      } catch (error) {
+        status.textContent = error.message || "下載失敗，請稍後再試。";
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    async function apiFetch(path, options = {}) {
+      const token = getToken();
+      const res = await fetch(API_BASE + path, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+          "Authorization": "Bearer " + token
+        }
+      });
+      const data = await res.json().catch(()=> ({}));
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    async function guardAdmin(){
+      const token = getToken();
+      if (!token) return location.href = "auth.html";
+
+      const meRes = await fetch(API_BASE + "/api/me", {
+        headers: { Authorization: "Bearer " + token }
+      });
+      const me = await meRes.json().catch(()=> ({}));
+
+      if (!meRes.ok) {
+        localStorage.removeItem("token");
+        return location.href = "auth.html";
+      }
+
+      if (me.role !== "admin") {
+        if (me.role === "expert") location.href = "expert_dashboard.html";
+        else location.href = "dashboard.html";
+        return;
+      }
+
+      subTitle.textContent = `管理員：${me.username}（${me.email}）`;
+    }
+
+    function renderExperts(rows){
+      expertCount.textContent = `${rows.length} 位`;
+      expertTbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.expert_user_id}</td>
+          <td>${escapeHtml(r.username || "-")}</td>
+          <td>${escapeHtml(r.email || "-")}</td>
+          <td>${escapeHtml(r.specialty || "-")}</td>
+          <td>${escapeHtml(r.title || "-")}</td>
+        </tr>
+      `).join("");
+
+      if (rows.length === 0) {
+        expertTbody.innerHTML = `<tr><td colspan="5" class="muted">目前還沒有專家帳號。請先到「專家資料維護」新增教練或醫師，才能配對學員。</td></tr>`;
+        expertSelect.innerHTML = `<option value="">（尚無專家，請先新增）</option>`;
+        return;
+      }
+
+      // 下拉
+      expertSelect.innerHTML = rows.map(r => {
+        const label = r.title ? `${r.title}/${r.username} (${r.expert_user_id})` : `${r.username} (${r.expert_user_id})`;
+        return `<option value="${r.expert_user_id}">${escapeHtml(label)}</option>`;
+      }).join("");
+    }
+
+    function renderClients(rows){
+      clientSelect.innerHTML = rows.map(r => {
+        const label = `${r.username} (${r.client_user_id})`;
+        return `<option value="${r.client_user_id}">${escapeHtml(label)}</option>`;
+      }).join("");
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    async function loadExperts(){
+      const r = await apiFetch("/api/admin/experts");
+      if (!r.ok) throw new Error(r.data?.message || "讀取專家清單失敗");
+      renderExperts(Array.isArray(r.data) ? r.data : []);
+    }
+
+    async function loadClients(){
+      const r = await apiFetch("/api/admin/clients");
+      if (!r.ok) throw new Error(r.data?.message || "讀取學員清單失敗");
+      renderClients(Array.isArray(r.data) ? r.data : []);
+    }
+
+    function fmtDate(dt){
+      const d = new Date(dt);
+      return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("zh-TW", { timeZone: "Asia/Taipei" });
+    }
+
+    function renderPairs(){
+      const rows = chkShowEnded.checked ? cachedPairs : cachedPairs.filter(r => r.status === "active");
+      const activeCount = cachedPairs.filter(r => r.status === "active").length;
+      pairCount.textContent = `${activeCount} 組指導中`;
+
+      if (rows.length === 0) {
+        pairTbody.innerHTML = `<tr><td colspan="7" class="muted">目前沒有配對，請在上方選擇學員與專家建立。</td></tr>`;
+        return;
+      }
+
+      pairTbody.innerHTML = rows.map(r => {
+        const active = r.status === "active";
+        const expertLabel = `${r.title ? r.title + "｜" : ""}${r.expert_name}`;
+        const inactiveNote = (s) => s !== "active" ? ` <span class="muted">（帳號停用）</span>` : "";
+        return `
+          <tr>
+            <td><b>${escapeHtml(expertLabel)}</b>${inactiveNote(r.expert_status)}<div class="muted">${escapeHtml(r.expert_email)}</div></td>
+            <td><b>${escapeHtml(r.client_name)}</b>${inactiveNote(r.client_status)}<div class="muted">${escapeHtml(r.client_email)}</div></td>
+            <td>${active ? "指導中" : `<span class="muted">已結束</span>`}</td>
+            <td>${Number(r.task_count) || 0}</td>
+            <td>${Number(r.open_questions) || 0}</td>
+            <td>${fmtDate(r.created_at)}</td>
+            <td>
+              <button class="secondary" type="button"
+                data-expert="${r.expert_user_id}" data-client="${r.client_user_id}"
+                data-status="${active ? "ended" : "active"}">
+                ${active ? "結束指導" : "恢復指導"}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    pairTbody.addEventListener("click", async (ev) => {
+      const btn = ev.target.closest("button[data-status]");
+      if (!btn) return;
+      const status = btn.dataset.status;
+      if (status === "ended" && !confirm("結束後，這位專家將無法再查看此學員的資料。確定要結束指導嗎？")) return;
+
+      btn.disabled = true;
+      const r = await apiFetch("/api/admin/assignments", {
+        method: "POST",
+        body: JSON.stringify({
+          expert_user_id: Number(btn.dataset.expert),
+          client_user_id: Number(btn.dataset.client),
+          status
+        })
+      });
+      if (!r.ok) {
+        btn.disabled = false;
+        return alert(r.data?.message || "更新失敗");
+      }
+      await loadPairs();
+    });
+
+    async function loadPairs(){
+      const r = await apiFetch("/api/admin/assignments");
+      if (!r.ok) throw new Error(r.data?.message || "讀取配對清單失敗");
+      cachedPairs = Array.isArray(r.data) ? r.data : [];
+      renderPairs();
+    }
+
+    async function loadAll(){
+      setErr("");
+      assignPill.textContent = "loading...";
+      try{
+        await Promise.all([loadExperts(), loadClients(), loadPairs()]);
+        assignPill.textContent = "ready";
+      }catch(e){
+        assignPill.textContent = "error";
+        setErr(String(e.message || e));
+      }
+    }
+
+    async function submitAssign(){
+      setErr("");
+      const expert_user_id = Number(expertSelect.value);
+      const client_user_id = Number(clientSelect.value);
+      const status = statusSelect.value;
+
+      if (!expert_user_id || !client_user_id) {
+        return setErr("請選擇學員與專家");
+      }
+
+      assignPill.textContent = "sending...";
+      const r = await apiFetch("/api/admin/assignments", {
+        method: "POST",
+        body: JSON.stringify({ expert_user_id, client_user_id, status })
+      });
+
+      if (!r.ok) {
+        assignPill.textContent = "error";
+        return setErr(`${r.data?.message || "指派失敗"}\n${r.data?.error || ""}`);
+      }
+
+      assignPill.textContent = "done";
+      await loadPairs().catch(e => setErr(String(e.message || e)));
+      alert(status === "active" ? "配對完成" : "已結束指導");
+    }
+
+    document.getElementById("btnLogout").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      location.href = "auth.html";
+    });
+    document.getElementById("btnRefresh").addEventListener("click", loadAll);
+    document.getElementById("btnManageExperts").addEventListener("click", () => {
+      location.href = "admin.html";
+    });
+    document.getElementById("btnAssign").addEventListener("click", submitAssign);
+    chkShowEnded.addEventListener("change", renderPairs);
+
+    async function loadStravaAdmin(){
+      const pill = document.getElementById("stravaPill");
+      const info = document.getElementById("stravaInfo");
+      const btn = document.getElementById("btnStravaWebhook");
+      const r = await apiFetch("/api/admin/strava");
+      if (!r.ok) { pill.textContent = "錯誤"; info.textContent = r.data.message || "讀取失敗"; return; }
+      const d = r.data;
+      if (!d.configured) {
+        pill.textContent = "未設定";
+        btn.hidden = true;
+        info.innerHTML = "請先到 Strava 開發者頁面（strava.com/settings/api）建立應用程式，「Authorization Callback Domain」填入網站網域，再於 Netlify 環境變數設定 <code>STRAVA_CLIENT_ID</code> 與 <code>STRAVA_CLIENT_SECRET</code> 並重新部署。";
+        return;
+      }
+      const active = d.subscription && d.subscription.callback_url === d.callback_url;
+      pill.textContent = active ? "自動同步中" : "已設定";
+      btn.hidden = active;
+      info.textContent = `已連結學員：${d.connected_users} 位｜Webhook：${active ? "已啟用" : d.subscription ? "目前指向其他網址（" + d.subscription.callback_url + "）" : "尚未啟用（學員仍可在運動紀錄頁手動同步）"}`;
+    }
+    document.getElementById("btnStravaWebhook").addEventListener("click", async () => {
+      const btn = document.getElementById("btnStravaWebhook");
+      btn.disabled = true;
+      const r = await apiFetch("/api/admin/strava/subscribe", { method: "POST", body: "{}" });
+      document.getElementById("stravaMsg").textContent = r.data.message || (r.ok ? "完成" : "啟用失敗");
+      btn.disabled = false;
+      loadStravaAdmin();
+    });
+
+    (async function init(){
+      await guardAdmin();
+      await loadAll();
+      loadStravaAdmin();
+    })();
+  </script>
+</body>
+</html>

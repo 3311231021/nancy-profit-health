@@ -1,0 +1,29 @@
+{
+  "name": "profit-health-netlify",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/package-source.cjs && node scripts-check.cjs",
+    "package:source": "node scripts/package-source.cjs",
+    "test": "node --test test/*.test.cjs",
+    "start": "node server/local.cjs"
+  },
+  "dependencies": {
+    "@netlify/database": "^2.0.1",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3",
+    "qrcode": "^1.5.4",
+    "serverless-http": "^3.2.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.14",
+    "supertest": "^7.1.4"
+  }
+}

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProFit Health｜QR Code 核銷</title>
+  <link rel="stylesheet" href="theme.css">
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body class="site-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" id="homeLink" href="expert_dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽" id="nav"><a href="expert_dashboard.html">總覽</a><a href="checkin.html" aria-current="page">QR Code 核銷</a></nav></header>
+<main id="main-content" class="app-main">
+  <p class="eyebrow">CHECK-IN</p>
+  <h1>QR Code 核銷</h1>
+  <p class="page-intro" id="intro">掃描學員「我的課程」中的 QR Code，確認後扣除 1 堂或完成講座入場。</p>
+
+  <div class="row" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:24px;">
+    <div class="card scan-area">
+      <div class="section-title">掃描</div>
+      <div id="reader"></div>
+      <div class="actions" style="display:flex; margin-top:12px;">
+        <button type="button" id="btnStart">開啟相機</button>
+        <button type="button" class="secondary" id="btnStop" hidden>關閉相機</button>
+      </div>
+      <details style="margin-top:14px;">
+        <summary class="muted" style="cursor:pointer;">無法使用相機？手動貼上代碼</summary>
+        <textarea id="manualCode" rows="3" style="margin-top:8px;" placeholder="貼上 QR Code 內容"></textarea>
+        <button type="button" class="secondary small" id="btnManual" style="margin-top:8px;">查詢</button>
+      </details>
+      <div id="camErr" class="err" role="alert"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">核銷結果</div>
+      <div id="result" class="scan-result" aria-live="polite"><div class="empty">尚未掃描</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px;">
+    <div class="section-title">最近核銷紀錄</div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>時間</th><th>學員</th><th>課程</th><th>剩餘</th><th>核銷人員</th><th>狀態</th><th id="thAction"></th></tr></thead>
+        <tbody id="recent"><tr><td colspan="7" class="muted">讀取中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="pf-common.js"></script>
+<script>
+  let me = null;
+  let scanner = null;
+  let busy = false;
+  const result = document.getElementById("result");
+
+  function passInfo(p) {
+    if (!p) return "";
+    const isEvent = p.course_type === "event";
+    return `<div class="big">${PF.esc(p.student_name)}</div>
+      <div class="muted">${PF.esc(p.student_email)}</div>
+      <p style="margin:10px 0;"><span class="tag ${isEvent ? "event" : ""}">${PF.COURSE_TYPE[p.course_type]}</span> ${PF.esc(p.title)}</p>
+      ${isEvent ? (p.event_at ? `<div class="muted">活動時間 ${PF.dt(p.event_at)}</div>` : "")
+        : `<div class="pass-count">${p.remaining_sessions}<small> / ${p.total_sessions} 堂剩餘</small></div>`}`;
+  }
+
+  async function handleCode(code) {
+    if (busy) return;
+    busy = true;
+    await stopCam();
+    result.innerHTML = `<div class="muted">查詢中…</div>`;
+    try {
+      const r = await PF.api("/api/checkin/preview", "POST", { code });
+      const isEvent = r.pass.course_type === "event";
+      result.innerHTML = `${passInfo(r.pass)}
+        <div class="actions" style="display:flex; margin-top:16px;">
+          <button type="button" id="btnConfirm">${isEvent ? "確認入場" : "確認扣 1 堂"}</button>
+          <button type="button" class="secondary" id="btnCancel">取消</button>
+        </div>`;
+      document.getElementById("btnCancel").onclick = () => { result.innerHTML = `<div class="empty">已取消</div>`; busy = false; startCam(); };
+      document.getElementById("btnConfirm").onclick = async (e) => {
+        e.target.disabled = true;
+        try {
+          const done = await PF.api("/api/checkin", "POST", { code });
+          result.innerHTML = `<div class="notice ok-notice"><strong>✓ ${PF.esc(done.message)}</strong></div>${passInfo(done.pass)}
+            <button type="button" id="btnNext" style="margin-top:16px;">掃描下一位</button>`;
+          document.getElementById("btnNext").onclick = () => { result.innerHTML = `<div class="empty">尚未掃描</div>`; startCam(); };
+          loadRecent();
+        } catch (err) {
+          result.innerHTML = `<div class="notice">✕ ${PF.esc(err.message)}</div>`;
+        }
+        busy = false;
+      };
+    } catch (err) {
+      result.innerHTML = `<div class="notice">✕ ${PF.esc(err.message)}</div>${passInfo(err.data?.pass)}
+        <button type="button" id="btnNext" style="margin-top:16px;">重新掃描</button>`;
+      document.getElementById("btnNext").onclick = () => startCam();
+      busy = false;
+    }
+  }
+
+  async function startCam() {
+    const camErr = document.getElementById("camErr");
+    camErr.textContent = "";
+    if (typeof Html5Qrcode === "undefined") { camErr.textContent = "掃描元件載入失敗，請使用手動貼上代碼。"; return; }
+    if (scanner?.isScanning) return;
+    scanner ||= new Html5Qrcode("reader");
+    try {
+      await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 240, height: 240 } }, (text) => handleCode(text), () => {});
+      document.getElementById("btnStart").hidden = true;
+      document.getElementById("btnStop").hidden = false;
+    } catch {
+      camErr.textContent = "無法開啟相機，請確認瀏覽器已允許相機權限（需使用 HTTPS）。";
+    }
+  }
+
+  async function stopCam() {
+    if (scanner?.isScanning) { try { await scanner.stop(); } catch { /* 已停止 */ } }
+    document.getElementById("btnStart").hidden = false;
+    document.getElementById("btnStop").hidden = true;
+  }
+
+  document.getElementById("btnStart").onclick = () => { busy = false; startCam(); };
+  document.getElementById("btnStop").onclick = stopCam;
+  document.getElementById("btnManual").onclick = () => {
+    const code = document.getElementById("manualCode").value.trim();
+    if (code) { busy = false; handleCode(code); }
+  };
+
+  async function loadRecent() {
+    const tb = document.getElementById("recent");
+    try {
+      const rows = await PF.api("/api/checkin/recent");
+      const admin = me.role === "admin";
+      tb.innerHTML = rows.length ? rows.map(r => `
+        <tr>
+          <td>${PF.dt(r.created_at)}</td>
+          <td>${PF.esc(r.student_name)}</td>
+          <td>${PF.esc(r.title)}</td>
+          <td>${r.course_type === "event" ? "-" : `${r.remaining_sessions} / ${r.total_sessions}`}</td>
+          <td>${PF.esc(r.staff_name)}</td>
+          <td>${r.status === "valid" ? "有效" : `<span class="muted">已撤銷</span>`}</td>
+          <td>${admin && r.status === "valid" ? `<button type="button" class="secondary small" data-revoke="${r.id}">撤銷</button>` : ""}</td>
+        </tr>`).join("") : `<tr><td colspan="7" class="muted">尚無核銷紀錄</td></tr>`;
+    } catch (err) {
+      tb.innerHTML = `<tr><td colspan="7" class="err">${PF.esc(err.message)}</td></tr>`;
+    }
+  }
+
+  document.getElementById("recent").addEventListener("click", async e => {
+    const b = e.target.closest("button[data-revoke]");
+    if (!b || !confirm("撤銷後會退回 1 堂給學員，確定嗎？")) return;
+    b.disabled = true;
+    try { await PF.api(`/api/admin/redemptions/${b.dataset.revoke}/revoke`, "POST"); loadRecent(); }
+    catch (err) { alert(err.message); b.disabled = false; }
+  });
+
+  (async () => {
+    try { me = await PF.guard(["admin", "expert"]); } catch { return; }
+    if (me.role === "admin") {
+      document.getElementById("homeLink").href = "admin_dashboard.html";
+      document.getElementById("nav").innerHTML = `<a href="admin_dashboard.html">總覽</a><a href="admin_courses.html">課程管理</a><a href="admin_sales.html">銷售統計</a><a href="checkin.html" aria-current="page">QR Code 核銷</a>`;
+      document.getElementById("intro").textContent = "管理員可核銷所有課程與講座；專家只能核銷自己負責的課程。";
+    } else {
+      document.getElementById("intro").textContent = "你可以核銷自己負責的課程。掃描學員的 QR Code，確認後扣除 1 堂或完成講座入場。";
+    }
+    loadRecent();
+  })();
+</script>
+</body>
+</html>

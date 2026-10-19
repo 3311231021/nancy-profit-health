@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>目標設定</title>
+  <style>
+    body { font-family: Arial; background:#f4f7fb; margin:20px; }
+    .wrap { max-width: 760px; margin: 0 auto; }
+    .card {
+      background:#fff; padding: 22px; border-radius: 14px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    }
+    h1 { margin: 0 0 16px; }
+    label { display:block; margin-top: 14px; font-weight:bold; }
+    input {
+      width:100%; padding: 12px; margin-top: 8px;
+      border:1px solid #ddd; border-radius: 10px;
+      font-size: 16px;
+    }
+    .btns { display:flex; gap:12px; margin-top: 18px; flex-wrap: wrap; }
+    button {
+      padding: 12px 18px; border:none; border-radius: 12px;
+      cursor:pointer; font-size: 16px;
+    }
+    .primary { background:#0d6efd; color:#fff; }
+    .secondary { background:#16a34a; color:#fff; }
+    .muted { color:#6b7280; margin-top: 10px; }
+    .error { color:#dc2626; margin-top: 10px; white-space: pre-wrap; }
+    .ok { color:#16a34a; margin-top: 10px; }
+    .grid { display:grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 860px) { .grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body class="site-page workspace-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="dashboard.html">總覽</a><a href="activity.html">運動紀錄</a><a href="health_record.html">健康紀錄</a></nav></header>
+<main id="main-content" class="app-main">
+
+  <div class="wrap">
+    <div class="card">
+      <h1>目標設定</h1>
+
+      <div class="grid">
+        <div>
+          <label>每日步數目標</label>
+          <input id="daily_steps" type="number" min="0" placeholder="例如：5000" />
+        </div>
+
+        <div>
+          <label>每日運動時間（分鐘）</label>
+          <input id="daily_minutes" type="number" min="0" placeholder="例如：30" />
+        </div>
+
+        <div>
+          <label>每日卡路里目標（kcal）</label>
+          <input id="daily_calories" type="number" min="0" placeholder="例如：300" />
+        </div>
+
+        <div>
+          <label>每週運動天數（僅供規劃）</label>
+          <input id="week_days" type="number" min="0" max="7" placeholder="例如：3" />
+          <div class="muted">此欄位目前不會儲存，重新開啟頁面後會清空。</div>
+        </div>
+      </div>
+
+      <div class="btns">
+        <button class="primary" onclick="saveGoals()">儲存目標</button>
+        <button class="secondary" onclick="location.href='dashboard.html'">回首頁</button>
+      </div>
+
+      <div id="msg" class="muted"></div>
+      <div id="err" class="error"></div>
+
+      <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
+
+      <h3 style="margin:0 0 10px;">目前目標</h3>
+      <div id="current" class="muted">讀取中...</div>
+    </div>
+  </div>
+
+<script>
+  const API_BASE = "";
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    alert("請先登入");
+    location.href = "auth.html";
+  }
+
+  async function api(path, method = "GET", body = null) {
+    const res = await fetch(API_BASE + path, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: body ? JSON.stringify(body) : null
+    });
+
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) {
+      const t = await res.text();
+      throw new Error(`API 回傳非 JSON：${path} (${res.status})\n${t.slice(0,200)}`);
+    }
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || `API 錯誤：${path} (${res.status})`);
+    return data;
+  }
+
+  function setStatus(okText = "", errText = "") {
+    document.getElementById("msg").className = okText ? "ok" : "muted";
+    document.getElementById("msg").textContent = okText || "";
+    document.getElementById("err").textContent = errText || "";
+  }
+
+  async function loadGoals() {
+    setStatus("讀取目標中...", "");
+    const g = await api("/api/goals");
+
+    document.getElementById("daily_steps").value = g.daily_steps ?? 5000;
+    document.getElementById("daily_minutes").value = g.daily_minutes ?? 30;
+    document.getElementById("daily_calories").value = g.daily_calories ?? 300;
+
+    document.getElementById("current").innerHTML = `
+      每日步數目標：<b>${g.daily_steps ?? 5000}</b> 步<br>
+      每日運動時間：<b>${g.daily_minutes ?? 30}</b> 分鐘<br>
+      每日卡路里目標：<b>${g.daily_calories ?? 300}</b> kcal
+    `;
+    setStatus("", "");
+  }
+
+  async function saveGoals() {
+    try {
+      setStatus("儲存中...", "");
+
+      const daily_steps = Number(document.getElementById("daily_steps").value || 0);
+      const daily_minutes = Number(document.getElementById("daily_minutes").value || 0);
+      const daily_calories = Number(document.getElementById("daily_calories").value || 0);
+
+      await api("/api/goals", "PUT", { daily_steps, daily_minutes, daily_calories });
+
+      setStatus("✅ 儲存成功！", "");
+      await loadGoals();
+    } catch (e) {
+      console.error(e);
+      setStatus("", "❌ 儲存失敗：\n" + e.message);
+    }
+  }
+
+  (async function init() {
+    try {
+      await loadGoals();
+    } catch (e) {
+      console.error(e);
+      setStatus("", "❌ 載入失敗：\n" + e.message);
+    }
+  })();
+</script>
+</main>
+<footer class="site-footer"><span>ProFit Health · 陪你累積每一天的進步</span><span>運動紀錄 ／ 健康管理 ／ 專業陪伴</span></footer>
+</body>
+</html>

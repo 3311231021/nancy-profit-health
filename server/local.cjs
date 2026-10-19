@@ -1,0 +1,1 @@
+const express=require('express'),path=require('path');const site=express();site.use(express.static(path.join(__dirname,'../public')));site.use(require('./app'));site.listen(process.env.PORT||3000,()=>console.log('ProFit local server ready'));

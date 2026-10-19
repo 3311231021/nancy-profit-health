@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>每日運動紀錄</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .page-title {
+      text-align: center;
+      font-size: 26px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.1fr 1.1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 20px;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      margin-bottom: 8px;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #777;
+      margin-bottom: 8px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 10px 0;
+      border: none;
+      border-radius: 8px;
+      background: #007bff;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .btn-primary:hover {
+      background: #0056b3;
+    }
+
+    .btn-secondary {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid #007bff;
+      background: #fff;
+      color: #007bff;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 16px;
+    }
+
+    .btn-secondary:hover {
+      background: #e6f0ff;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: #eef2ff;
+      color: #4f46e5;
+      margin-left: 5px;
+    }
+
+    .history-list {
+      max-height: 420px;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      border-bottom: 1px solid #eee;
+      padding: 10px 0;
+      font-size: 14px;
+    }
+
+    .history-item:last-child {
+      border-bottom: none;
+    }
+
+    .history-header {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .history-meta {
+      color: #666;
+      font-size: 12px;
+    }
+    .sync-card { max-width: 900px; margin: 0 auto 20px; }
+    .sync-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .sync-grid { grid-template-columns: 1fr; } }
+    .sync-panel { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+    .sync-panel h3 { margin: 0 0 6px; font-size: 17px; }
+    .sync-status { font-size: 13px; margin: 6px 0 10px; }
+    .sync-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sync-actions button { margin-top: 0; }
+    .copy-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+    .copy-row input { margin-bottom: 0; font-family: monospace; font-size: 13px; }
+    .copy-row button { flex: 0 0 auto; margin-top: 0; }
+    .steps-guide { font-size: 13px; line-height: 1.7; padding-left: 20px; margin: 8px 0; }
+    .steps-guide code, .json-sample { background: #f3f4f6; border-radius: 4px; padding: 1px 4px; font-size: 12px; }
+    .json-sample { display: block; white-space: pre; overflow-x: auto; padding: 8px; margin: 6px 0; }
+    .notice { padding: 10px 12px; border-radius: 8px; background: #eef6ee; color: #285b45; font-size: 14px; margin-bottom: 14px; }
+    .notice.error { background: #f8eeea; color: #a33b2b; }
+    .source-badge { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 999px; margin-left: 6px; font-weight: normal; vertical-align: 1px; }
+    .source-badge.strava { background: #fdebe1; color: #b33c0a; }
+    .source-badge.apple { background: #eceef2; color: #374151; }
+  </style>
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body class="site-page workspace-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="dashboard.html">總覽</a><a href="activity.html" aria-current="page">運動紀錄</a><a href="health_record.html">健康紀錄</a><a href="courses.html">購買課程</a><a href="my_courses.html">我的課程</a></nav></header>
+<main id="main-content" class="app-main">
+
+
+  <div class="page-title">每日運動紀錄</div>
+
+  <div id="syncNotice" class="notice sync-card" role="status" hidden></div>
+
+  <!-- 連結運動手錶 -->
+  <section class="card sync-card" aria-labelledby="syncTitle">
+    <h2 id="syncTitle">連結運動手錶</h2>
+    <div class="hint">連結後，手錶的運動資料會自動匯入下方的歷史紀錄，配對的專家也能看到。</div>
+    <div class="sync-grid">
+      <div class="sync-panel">
+        <h3>Strava</h3>
+        <div class="hint">Garmin、Apple Watch、COROS、Suunto、Polar、小米等手錶都能先同步到 Strava，網站再自動匯入每次的運動（種類、時間、距離、心率、速度、卡路里）。</div>
+        <div id="stravaStatus" class="sync-status">讀取中...</div>
+        <div class="sync-actions">
+          <button type="button" id="btnStravaConnect" hidden>連結 Strava</button>
+          <button type="button" id="btnStravaSync" class="secondary" hidden>立即同步</button>
+          <button type="button" id="btnStravaDisconnect" class="danger" hidden>取消連結</button>
+        </div>
+      </div>
+
+      <div class="sync-panel">
+        <h3>Apple Watch（iPhone 捷徑）</h3>
+        <div class="hint">用 iPhone 內建的「捷徑」App 每天自動上傳健康 App 的步數、運動分鐘數、動態能量與心率，不需要安裝其他 App。</div>
+        <div id="shortcutStatus" class="sync-status">讀取中...</div>
+        <div class="sync-actions">
+          <button type="button" id="btnShortcutToken">產生上傳金鑰</button>
+          <button type="button" id="btnShortcutRevoke" class="danger" hidden>停用金鑰</button>
+        </div>
+        <div id="shortcutSetup" hidden style="margin-top:12px;">
+          <label for="shortcutUrl">上傳網址</label>
+          <div class="copy-row"><input id="shortcutUrl" readonly><button type="button" class="secondary" data-copy="shortcutUrl">複製</button></div>
+          <div id="shortcutTokenWrap" hidden>
+            <label for="shortcutToken">上傳金鑰（只會顯示這一次，請立即複製）</label>
+            <div class="copy-row"><input id="shortcutToken" readonly><button type="button" class="secondary" data-copy="shortcutToken">複製</button></div>
+          </div>
+          <details>
+            <summary style="cursor:pointer;font-weight:bold;">捷徑設定步驟</summary>
+            <ol class="steps-guide">
+              <li>打開 iPhone「捷徑」App，按右上角「＋」建立新捷徑，命名為「ProFit 同步」。</li>
+              <li>加入動作「尋找健康樣本」：類型選「步數」，條件「開始日期」「是今天」，「分組方式」選「天」。</li>
+              <li>再加入三個「尋找健康樣本」（設定同上）：「運動分鐘數」、「動態能量」，以及「心率」（心率的分組方式可不設定）。英文介面分別是 Steps、Exercise Minutes、Active Energy、Heart Rate。</li>
+              <li>加入動作「取得 URL 的內容」：網址貼上上方的「上傳網址」，方法選「POST」。</li>
+              <li>「標頭」新增一筆：鍵 <code>Authorization</code>，值 <code>Bearer 你的上傳金鑰</code>（Bearer 後面有一個空格）。</li>
+              <li>「要求本文」選「JSON」，新增以下「數字」欄位，值分別選取上面各步驟結果的「值」（心率可選「平均」）：
+                <span class="json-sample">steps            → 步數
+exercise_minutes → 運動分鐘數
+active_calories  → 動態能量
+heart_rate       → 心率（選填）</span>
+              </li>
+              <li>（選填）加入「顯示通知」，內容選「URL 的內容」，就能看到同步結果。</li>
+              <li>切換到「自動化」分頁 →「新增自動化」→「特定時間」，設定每天 22:00，選「立即執行」，再選擇「ProFit 同步」捷徑。</li>
+            </ol>
+            <div class="hint">同一天重複上傳會更新當天的「Apple Watch 每日活動」紀錄，不會重複新增。也可以加上文字欄位 <code>date</code>（格式 yyyy-MM-dd）補傳前幾天的資料。</div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="container">
+    <!-- 左側：輸入表單 -->
+    <div class="card">
+      <h2>新增紀錄</h2>
+
+      <label for="activity_type">
+        運動種類
+      </label>
+      <select id="activity_type">
+        <option value="走路">走路</option>
+        <option value="跑步">跑步</option>
+        <option value="健身">健身</option>
+        <option value="瑜伽">瑜伽</option>
+        <option value="單車">單車</option>
+        <option value="教練訓練">教練訓練</option>
+        <option value="其他">其他</option>
+      </select>
+
+      <div id="other_type_wrap" style="display:none">
+        <label for="other_type">其他運動名稱（可選填）</label>
+        <input type="text" id="other_type" maxlength="30" placeholder="例如：游泳、羽球">
+      </div>
+
+      <label for="duration">運動時間（分鐘）</label>
+      <input type="number" id="duration" placeholder="例如：30">
+
+      <label for="steps">步數（可選填）</label>
+      <input type="number" id="steps" placeholder="例如：7000">
+
+      <label for="heart_rate">心率（平均 bpm，可選填）</label>
+      <input type="number" id="heart_rate" placeholder="例如：120">
+
+      <label for="speed">速度（km/h，可選填）</label>
+      <input type="number" id="speed" placeholder="例如：6.5">
+
+      <label for="calories">
+        預估消耗卡路里
+        <span class="badge">自動計算，可修改</span>
+      </label>
+      <input type="number" id="calories" placeholder="會依運動種類與時間自動估算">
+
+      <div class="hint">
+        卡路里為粗略估算，僅供參考。
+      </div>
+
+      <button class="btn-primary" onclick="saveActivity()">儲存紀錄</button>
+
+      <button class="btn-secondary" onclick="goDashboard()">回首頁</button>
+    </div>
+
+    <!-- 右側：歷史紀錄 -->
+    <div class="card">
+      <h2>歷史紀錄</h2>
+      <div id="history" class="history-list">
+        讀取中...
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ✅ 把 SQLite 的 "YYYY-MM-DD HH:mm:ss" 當作 UTC 來解析
+  function parseSqliteUtc(utcString) {
+    if (!utcString) return null;
+    // PostgreSQL 回傳 ISO 格式（含時區）；舊資料則補上 Z 當作 UTC
+    const text = String(utcString);
+    const iso = /[zZ]|[+-]\d{2}:?\d{2}$/.test(text) ? text : text.replace(" ", "T") + "Z";
+    return new Date(iso);
+  }
+
+  // ✅ 顯示成台灣時間（Asia/Taipei）
+  function formatTWDateTime(utcString) {
+    const d = parseSqliteUtc(utcString);
+    if (!d) return "-";
+    return d.toLocaleString("zh-TW", {
+      timeZone: "Asia/Taipei",
+      hour12: false
+    });
+  }
+
+  // 簡單 MET 表（大約值，用來估算卡路里）
+  const MET_TABLE = {
+    "走路": 3.3,
+    "跑步": 8.0,
+    "健身": 6.0,
+    "瑜伽": 3.0,
+    "單車": 6.8,
+    "教練訓練": 6.0,
+    "其他": 4.0
+  };
+
+  // 假設平均體重 60kg 來估算（你之後可改成從健康紀錄抓最新體重）
+  const DEFAULT_WEIGHT = 60;
+
+  function estimateCalories() {
+    const type = document.getElementById("activity_type").value;
+    const duration = Number(document.getElementById("duration").value || 0);
+
+    if (!duration) return;
+
+    const met = MET_TABLE[type] || 4;
+    const hours = duration / 60;
+    const calories = Math.round(met * DEFAULT_WEIGHT * hours);
+    document.getElementById("calories").value = calories;
+  }
+
+  document.getElementById("duration").addEventListener("change", estimateCalories);
+  document.getElementById("activity_type").addEventListener("change", estimateCalories);
+  document.getElementById("activity_type").addEventListener("change", (e) => {
+    document.getElementById("other_type_wrap").style.display = e.target.value === "其他" ? "" : "none";
+  });
+
+  async function saveActivity() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("尚未登入，請先登入！");
+      return;
+    }
+
+    let activity_type = document.getElementById("activity_type").value;
+    const otherName = document.getElementById("other_type").value.trim();
+    if (activity_type === "其他" && otherName) activity_type = `其他：${otherName}`;
+    const duration = Number(document.getElementById("duration").value);
+    const steps = Number(document.getElementById("steps").value || 0);
+    const heart_rate = Number(document.getElementById("heart_rate").value || 0);
+    const speed = Number(document.getElementById("speed").value || 0);
+    const calories = Number(document.getElementById("calories").value || 0);
+
+    if (!duration || duration <= 0) {
+      alert("請輸入運動時間！");
+      return;
+    }
+
+    const res = await fetch("/api/activity_records", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({
+        activity_type,
+        duration,
+        steps,
+        heart_rate,
+        speed,
+        calories
+      })
+    });
+
+    const data = await res.json();
+    alert(data.message);
+    loadHistory();
+  }
+
+  async function loadHistory() {
+    const token = localStorage.getItem("token");
+    const res = await fetch("/api/activity_records", {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    });
+
+    const rows = await res.json();
+    const list = document.getElementById("history");
+    list.innerHTML = "";
+
+    if (!rows || rows.length === 0) {
+      list.textContent = "目前沒有紀錄";
+      return;
+    }
+
+    rows.forEach(r => {
+      const div = document.createElement("div");
+      div.className = "history-item";
+
+      const header = document.createElement("div");
+      header.className = "history-header";
+      header.textContent = `${r.activity_type}｜${r.duration} 分鐘`;
+      if (r.source === "strava" || r.source === "apple") {
+        const badge = document.createElement("span");
+        badge.className = "source-badge " + r.source;
+        badge.textContent = r.source === "strava" ? "Strava" : "Apple 健康";
+        header.appendChild(badge);
+      }
+
+      const meta = document.createElement("div");
+      meta.className = "history-meta";
+
+      // ✅ 這裡改成台灣時間顯示
+      meta.textContent =
+        `${formatTWDateTime(r.created_at)}｜步數：${r.steps}｜心率：${r.heart_rate}｜速度：${r.speed} km/h｜卡路里：約 ${r.calories}` +
+        (r.distance_km ? `｜距離：${r.distance_km} km` : "") +
+        (r.title ? `｜${r.title}` : "");
+
+      div.appendChild(header);
+      div.appendChild(meta);
+      list.appendChild(div);
+    });
+  }
+
+  function goDashboard() {
+    location.href = "dashboard.html";
+  }
+
+  // 初始載入
+  loadHistory();
+</script>
+<script src="pf-common.js"></script>
+<script>
+  // ================= 連結運動手錶 =================
+  const syncNotice = document.getElementById("syncNotice");
+  function notify(msg, isError) {
+    syncNotice.textContent = msg;
+    syncNotice.classList.toggle("error", !!isError);
+    syncNotice.hidden = !msg;
+  }
+
+  const STRAVA_RESULT = {
+    connected: ["已連結 Strava，近 30 天的運動已匯入。", false],
+    denied: ["已取消 Strava 授權。", true],
+    expired: ["連結逾時，請重新按「連結 Strava」。", true],
+    scope: ["請在 Strava 授權頁勾選「查看你的活動資料」，網站才能匯入運動紀錄。", true],
+    error: ["連結 Strava 失敗，請稍後再試。", true],
+  };
+  const stravaResult = new URLSearchParams(location.search).get("strava");
+  if (STRAVA_RESULT[stravaResult]) {
+    notify(...STRAVA_RESULT[stravaResult]);
+    history.replaceState(null, "", "activity.html");
+  }
+
+  const $ = (id) => document.getElementById(id);
+
+  async function loadStrava(autoSync) {
+    try {
+      const s = await PF.api("/api/strava/status");
+      $("btnStravaConnect").hidden = !s.configured || s.connected;
+      $("btnStravaSync").hidden = !s.connected;
+      $("btnStravaDisconnect").hidden = !s.connected;
+      if (!s.configured) {
+        $("stravaStatus").textContent = "網站管理員尚未啟用 Strava 串接。";
+      } else if (s.connected) {
+        $("stravaStatus").innerHTML = `<span class="ok">已連結</span>${s.athlete_name ? "：" + PF.esc(s.athlete_name) : ""}｜上次同步：${PF.dt(s.last_sync_at)}`;
+        if (autoSync) syncStrava(false);
+      } else {
+        $("stravaStatus").textContent = "尚未連結。";
+      }
+    } catch (e) {
+      $("stravaStatus").textContent = e.message;
+    }
+  }
+
+  async function syncStrava(force) {
+    $("btnStravaSync").disabled = true;
+    try {
+      const r = await PF.api("/api/strava/sync", "POST", { force });
+      if (!r.skipped) {
+        if (force) notify(r.message);
+        loadHistory();
+        loadStrava(false);
+      } else if (force) notify(r.message);
+    } catch (e) {
+      if (force || e.status === 409) notify(e.message, true);
+      if (e.status === 409) loadStrava(false);
+    } finally {
+      $("btnStravaSync").disabled = false;
+    }
+  }
+
+  $("btnStravaConnect").addEventListener("click", async () => {
+    try {
+      const { url } = await PF.api("/api/strava/connect", "POST", {});
+      location.href = url;
+    } catch (e) { notify(e.message, true); }
+  });
+  $("btnStravaSync").addEventListener("click", () => syncStrava(true));
+  $("btnStravaDisconnect").addEventListener("click", async () => {
+    if (!confirm("確定取消連結 Strava？之後的運動不會再自動匯入，已匯入的紀錄會保留。")) return;
+    try {
+      const r = await PF.api("/api/strava/disconnect", "POST", {});
+      notify(r.message);
+      loadStrava(false);
+    } catch (e) { notify(e.message, true); }
+  });
+
+  async function loadShortcut() {
+    try {
+      const s = await PF.api("/api/shortcut/token");
+      $("shortcutUrl").value = s.upload_url;
+      $("shortcutSetup").hidden = !s.has_token;
+      $("btnShortcutRevoke").hidden = !s.has_token;
+      $("btnShortcutToken").textContent = s.has_token ? "重新產生金鑰" : "產生上傳金鑰";
+      $("shortcutStatus").innerHTML = s.has_token
+        ? `<span class="ok">已啟用</span>｜金鑰末四碼 ${PF.esc(s.token_hint)}｜上次上傳：${s.last_used_at ? PF.dt(s.last_used_at) : "尚未上傳"}`
+        : "尚未設定。按「產生上傳金鑰」後，依步驟設定捷徑。";
+    } catch (e) {
+      $("shortcutStatus").textContent = e.message;
+    }
+  }
+
+  $("btnShortcutToken").addEventListener("click", async () => {
+    if (!$("btnShortcutRevoke").hidden && !confirm("重新產生後，舊金鑰會立即失效，需要更新捷徑裡的金鑰。確定繼續？")) return;
+    try {
+      const r = await PF.api("/api/shortcut/token", "POST", {});
+      await loadShortcut();
+      $("shortcutToken").value = r.token;
+      $("shortcutTokenWrap").hidden = false;
+      $("shortcutSetup").querySelector("details").open = true;
+      notify("已產生上傳金鑰，請複製到捷徑中。金鑰只會顯示這一次。");
+    } catch (e) { notify(e.message, true); }
+  });
+  $("btnShortcutRevoke").addEventListener("click", async () => {
+    if (!confirm("停用後，捷徑將無法再上傳資料。確定停用？")) return;
+    try {
+      const r = await PF.api("/api/shortcut/token", "DELETE");
+      $("shortcutTokenWrap").hidden = true;
+      $("shortcutToken").value = "";
+      notify(r.message);
+      loadShortcut();
+    } catch (e) { notify(e.message, true); }
+  });
+
+  document.querySelectorAll("[data-copy]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const input = $(btn.dataset.copy);
+      try {
+        await navigator.clipboard.writeText(input.value);
+      } catch {
+        input.select();
+        document.execCommand("copy");
+      }
+      btn.textContent = "已複製";
+      setTimeout(() => { btn.textContent = "複製"; }, 1500);
+    });
+  });
+
+  if (localStorage.getItem("token")) {
+    loadStrava(true);
+    loadShortcut();
+  }
+</script>
+</main>
+<footer class="site-footer"><span>ProFit Health · 陪你累積每一天的進步</span><span>運動紀錄 ／ 健康管理 ／ 專業陪伴</span></footer>
+</body>
+</html>

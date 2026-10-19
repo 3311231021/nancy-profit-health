@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProFit Health｜我的課程</title>
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body class="site-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="dashboard.html">總覽</a><a href="activity.html">運動紀錄</a><a href="health_record.html">健康紀錄</a><a href="courses.html">購買課程</a><a href="my_courses.html" aria-current="page">我的課程</a></nav></header>
+<main id="main-content" class="app-main">
+  <p class="eyebrow">MY PASSES</p>
+  <h1>我的課程</h1>
+  <p class="page-intro">上課或入場時點「出示 QR Code」，由教練或工作人員掃描即可扣堂。QR Code 每 10 分鐘更新，且每個只能使用一次。</p>
+
+  <div id="returnMsg" class="notice" role="status"></div>
+  <div id="passes"><div class="empty">讀取中…</div></div>
+
+  <div class="card" style="margin-top:28px;">
+    <div class="section-title">訂單與發票</div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>訂單編號</th><th>項目</th><th>金額</th><th>付款狀態</th><th>發票</th><th>建立時間</th><th></th></tr></thead>
+        <tbody id="orders"><tr><td colspan="7" class="muted">讀取中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="pf-common.js"></script>
+<script>
+  const qrTimers = {};
+
+  function passHtml(p) {
+    const isEvent = p.course_type === "event";
+    const used = p.total_sessions - p.remaining_sessions;
+    const usable = p.remaining_sessions > 0 && !p.expired;
+    const state = p.expired ? `<span class="tag bad">已過期</span>`
+      : p.remaining_sessions === 0 ? `<span class="tag muted-tag">${isEvent ? "已入場" : "已用完"}</span>`
+      : `<span class="tag">可使用</span>`;
+    const history = (p.history || []).slice(0, 10).map(h =>
+      `<li>${PF.dt(h.created_at)}　${isEvent ? "入場" : `扣 ${h.sessions_used} 堂`}（${PF.esc(h.by)}）</li>`).join("");
+    return `
+      <section class="card pass-card">
+        <div>
+          <div>${state} <span class="tag ${isEvent ? "event" : ""}">${PF.COURSE_TYPE[p.course_type]}</span></div>
+          <h3 style="margin:10px 0 6px;">${PF.esc(p.title)}</h3>
+          <div class="muted" style="font-size:13px;">
+            ${p.expert_name ? `負責：${PF.esc(p.expert_name)}　` : ""}
+            ${isEvent && p.event_at ? `活動時間：${PF.dt(p.event_at)}　` : ""}
+            ${p.location ? `地點：${PF.esc(p.location)}　` : ""}
+            ${p.expires_at ? `有效至：${PF.day(p.expires_at)}` : ""}
+          </div>
+          ${isEvent ? "" : `
+            <div class="pass-count" style="margin-top:12px;">${p.remaining_sessions}<small> / ${p.total_sessions} 堂剩餘</small></div>
+            <div class="meter" role="img" aria-label="已使用 ${used} 堂，共 ${p.total_sessions} 堂"><span style="width:${(used / p.total_sessions) * 100}%"></span></div>
+            <div class="muted" style="font-size:13px;">已使用 ${used} 堂</div>`}
+          ${history ? `<ul class="history-list">${history}</ul>` : `<p class="muted" style="font-size:13px;">尚無使用紀錄</p>`}
+        </div>
+        <div class="qr-box" id="qr-${p.id}">
+          ${usable ? `<button type="button" data-qr="${p.id}">出示 QR Code</button>` : ""}
+        </div>
+      </section>`;
+  }
+
+  async function loadPasses() {
+    const box = document.getElementById("passes");
+    try {
+      const rows = await PF.api("/api/my/enrollments");
+      Object.values(qrTimers).forEach(clearTimeout);
+      box.innerHTML = rows.length ? rows.map(passHtml).join("")
+        : `<div class="empty">還沒有購買課程。<a href="courses.html">前往購買課程 →</a></div>`;
+    } catch (err) {
+      box.innerHTML = `<div class="notice">${PF.esc(err.message)}</div>`;
+    }
+  }
+
+  async function showQr(id) {
+    const box = document.getElementById("qr-" + id);
+    clearTimeout(qrTimers[id]);
+    try {
+      const r = await PF.api(`/api/my/enrollments/${id}/qr`);
+      box.innerHTML = `${r.svg}<div class="hint">請出示給教練／工作人員掃描</div>
+        <button type="button" class="secondary small" data-qr="${id}" style="margin-top:8px;">重新產生</button>`;
+      const remaining = r.remaining_sessions;
+      // 自動更新：過期前重新產生；掃描核銷後剩餘堂數改變就刷新頁面
+      const poll = async (left) => {
+        if (left <= 30) return showQr(id);
+        try {
+          const list = await PF.api("/api/my/enrollments");
+          const now = list.find(x => x.id === id);
+          if (!now || now.remaining_sessions !== remaining) {
+            document.getElementById("returnMsg").className = "notice ok-notice";
+            document.getElementById("returnMsg").textContent = now && now.course_type === "event" ? "已完成入場核銷。" : "已扣除 1 堂，剩餘堂數已更新。";
+            return loadPasses();
+          }
+        } catch { /* 網路暫時中斷時稍後再試 */ }
+        qrTimers[id] = setTimeout(() => poll(left - 5), 5000);
+      };
+      qrTimers[id] = setTimeout(() => poll(r.expires_in - 5), 5000);
+    } catch (err) {
+      box.innerHTML = `<div class="err">${PF.esc(err.message)}</div>`;
+    }
+  }
+
+  document.getElementById("passes").addEventListener("click", e => {
+    const b = e.target.closest("button[data-qr]");
+    if (b) showQr(Number(b.dataset.qr));
+  });
+
+  function invoiceCell(o) {
+    if (o.status !== "paid") return `<span class="muted">-</span>`;
+    if (o.invoice_status === "issued") return `${PF.esc(o.invoice_no)}<div class="muted" style="font-size:12px;">${PF.esc(PF.INVOICE_TYPE[o.invoice_type])}・隨機碼 ${PF.esc(o.random_number || "-")}</div>`;
+    return `<span class="muted">${PF.esc(PF.INVOICE_STATUS[o.invoice_status] || "處理中")}</span>`;
+  }
+
+  async function loadOrders() {
+    const tb = document.getElementById("orders");
+    try {
+      const rows = await PF.api("/api/my/orders");
+      tb.innerHTML = rows.length ? rows.map(o => `
+        <tr>
+          <td class="mono">${PF.esc(o.merchant_trade_no)}</td>
+          <td>${PF.esc(o.item_name)}</td>
+          <td>${PF.money(o.amount)}</td>
+          <td>${PF.esc(PF.ORDER_STATUS[o.status])}${o.status === "failed" && o.rtn_msg ? `<div class="muted" style="font-size:12px;">${PF.esc(o.rtn_msg)}</div>` : ""}</td>
+          <td>${invoiceCell(o)}</td>
+          <td>${PF.dt(o.paid_at || o.created_at)}</td>
+          <td>${o.status === "pending" ? `<button type="button" class="secondary small" data-sync="${o.id}">查詢付款</button>` : ""}</td>
+        </tr>`).join("") : `<tr><td colspan="7" class="muted">尚無訂單</td></tr>`;
+      return rows;
+    } catch (err) {
+      tb.innerHTML = `<tr><td colspan="7" class="err">${PF.esc(err.message)}</td></tr>`;
+      return [];
+    }
+  }
+
+  document.getElementById("orders").addEventListener("click", async e => {
+    const b = e.target.closest("button[data-sync]");
+    if (!b) return;
+    b.disabled = true;
+    try {
+      const r = await PF.api(`/api/my/orders/${b.dataset.sync}/sync`, "POST");
+      if (r.status === "paid") await Promise.all([loadPasses(), loadOrders()]);
+      else { alert("綠界尚未收到這筆訂單的付款。"); b.disabled = false; }
+    } catch (err) { alert(err.message); b.disabled = false; }
+  });
+
+  // 從綠界付款頁返回：確認付款結果（以綠界通知為主，查詢 API 作為備援）
+  async function handleReturn(orders) {
+    const tradeNo = new URLSearchParams(location.search).get("order");
+    if (!tradeNo) return;
+    const msg = document.getElementById("returnMsg");
+    const order = orders.find(o => o.merchant_trade_no === tradeNo);
+    if (!order) return;
+    if (order.status === "paid") { msg.className = "notice ok-notice"; msg.textContent = "付款成功！課程已加入下方清單。"; return; }
+    msg.textContent = "正在確認付款結果…";
+    for (let i = 0; i < 4; i++) {
+      try {
+        const r = await PF.api(`/api/my/orders/${order.id}/sync`, "POST");
+        if (r.status === "paid") {
+          msg.className = "notice ok-notice";
+          msg.textContent = "付款成功！課程已加入下方清單，電子發票將寄送至你的 Email。";
+          await Promise.all([loadPasses(), loadOrders()]);
+          return;
+        }
+        if (r.status === "failed") { msg.textContent = "付款未完成，可回到「購買課程」重新購買。"; await loadOrders(); return; }
+      } catch { /* 稍後重試 */ }
+      await new Promise(r => setTimeout(r, 3000));
+    }
+    msg.textContent = "尚未收到綠界付款結果。若已完成刷卡，請稍後在訂單列表按「查詢付款」。";
+  }
+
+  (async () => {
+    try { await PF.guard(["user"]); } catch { return; }
+    loadPasses();
+    handleReturn(await loadOrders());
+  })();
+</script>
+</body>
+</html>

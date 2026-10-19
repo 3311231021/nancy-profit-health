@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProFit Health｜登入 / 註冊</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: 420px;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.10);
+      padding: 26px 26px 22px;
+    }
+
+    .logo {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .logo img {
+      width: 160px;
+      height: auto;
+      display: block;
+    }
+
+    .tabs {
+      display: flex;
+      background: #eef2f7;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 6px 0 18px;
+    }
+    .tabs button {
+      flex: 1;
+      padding: 12px 10px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 700;
+      color: #23314a;
+    }
+    .tabs button.active {
+      background: #0d6efd;
+      color: #fff;
+    }
+
+    form { width: 100%; display: none; }
+    form.active { display: block; }
+
+    .field { margin-bottom: 12px; text-align: left; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #334155;
+      font-weight: 700;
+    }
+    input {
+      width: 100%;
+      padding: 12px 12px;
+      border: 1px solid #d0d7e2;
+      border-radius: 10px;
+      outline: none;
+      font-size: 14px;
+      background: #fff;
+    }
+    input:focus {
+      border-color: #0d6efd;
+      box-shadow: 0 0 0 3px rgba(13,110,253,.12);
+    }
+
+    .submit {
+      width: 100%;
+      padding: 12px 12px;
+      margin-top: 6px;
+      background: #0d6efd;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .submit:hover { opacity: .95; }
+
+    .hint {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.4;
+    }
+  </style>
+  <link rel="stylesheet" href="theme.css">
+</head>
+
+<body class="site-page auth-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="auth.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a></header>
+<main id="main-content" class="auth-layout">
+<section class="auth-story" aria-labelledby="story-title"><p class="eyebrow">YOUR EVERYDAY WELLNESS</p><h1 id="story-title">每一小步，<br>都是<em>更好的自己。</em></h1><p>記錄運動、看見改變，讓健康成為生活的一部分。<br>從今天開始，找到屬於你的節奏。</p><svg class="wellness-art" viewBox="0 0 500 235" role="img" aria-label="暖陽下的山丘與步道插畫"><defs><clipPath id="landscape-clip"><rect width="500" height="235" rx="24"/></clipPath></defs><g clip-path="url(#landscape-clip)"><path fill="#e9eee3" d="M0 0h500v235H0z"/><circle cx="380" cy="64" r="33" fill="#e8bc73"/><path d="M0 154Q110 53 252 147T500 119V235H0Z" fill="#b8c8a9"/><path d="M0 187Q136 100 281 177T500 150V235H0Z" fill="#7f9d7d"/><path d="M0 215Q158 158 304 216T500 189V235H0Z" fill="#416e52"/><path d="M257 135c-63 15-60 37 2 45s57 26-23 55h63c73-33 56-47-2-57s-80-23-40-43" fill="#f6f5ef"/><path d="M67 179v-60m0 27-14-16m14 28 16-21" fill="none" stroke="#416e52" stroke-width="3" stroke-linecap="round"/><ellipse cx="67" cy="119" rx="21" ry="32" fill="#416e52"/><path d="m148 190 9-23 16 8 11 19m-28-26 10-23 10 13 13 1" fill="none" stroke="#253c34" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="170" cy="133" r="7" fill="#253c34"/><path d="m166 147-14 10-11-1" fill="none" stroke="#253c34" stroke-width="5" stroke-linecap="round"/><path d="m440 99 6-3 6 3m-25-13 5-3 5 3" fill="none" stroke="#7f9d7d" stroke-width="2" stroke-linecap="round"/></g></svg><div class="story-tags"><span>每日運動</span><span>健康趨勢</span><span>專家陪伴</span></div></section>
+  <div class="card auth-card">
+    <h2 class="auth-heading">歡迎來到 ProFit</h2>
+    <p class="auth-subtitle">給健康一點時間，給自己一點改變。</p>
+
+    <div class="logo">
+      <img src="logo.png" alt="ProFit Health Logo">
+    </div>
+
+    <div class="tabs">
+      <button id="loginTab" class="active" type="button" aria-pressed="true">登入</button>
+      <button id="registerTab" type="button" aria-pressed="false">註冊</button>
+    </div>
+
+    <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
+
+    <!-- Login -->
+    <form id="loginForm" class="active">
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" autocomplete="email" required placeholder="請輸入 Email">
+      </div>
+
+      <div class="field">
+        <label for="loginPassword">密碼</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required placeholder="請輸入密碼">
+      </div>
+
+      <button class="submit" type="submit">登入</button>
+      <div class="hint">登入後，開啟你的專屬健康總覽。</div>
+    </form>
+
+    <!-- Register -->
+    <form id="registerForm">
+      <div class="field">
+        <label for="regUsername">使用者名稱</label>
+        <input type="text" id="regUsername" autocomplete="nickname" required placeholder="你的顯示名稱">
+      </div>
+
+      <div class="field">
+        <label for="regEmail">Email</label>
+        <input type="email" id="regEmail" autocomplete="email" required placeholder="請輸入 Email">
+      </div>
+
+      <div class="field">
+        <label for="regPassword">密碼</label>
+        <input type="password" id="regPassword" autocomplete="new-password" required placeholder="請輸入密碼">
+      </div>
+
+      <button class="submit" type="submit">註冊</button>
+      <div class="hint">建立帳號，開始記錄你的健康日常。</div>
+    </form>
+
+    <p class="auth-note">你的日常努力，值得被好好記錄。</p>
+  </div>
+
+<script src="auth-response.js"></script>
+<script>
+const API_BASE = "";
+
+function showAuthMessage(message, success = false) {
+  const messageBox = document.getElementById("authMessage");
+  messageBox.textContent = message;
+  messageBox.classList.toggle("success", success);
+}
+
+// ===== 若已登入，直接導向對應 Dashboard =====
+(async function autoRedirectIfLoggedIn() {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me`, {
+      headers: { Authorization: "Bearer " + token }
+    });
+    const me = await readAuthResponse(res);
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) localStorage.removeItem("token");
+      return;
+    }
+
+    if (me.role === "admin") location.href = "admin_dashboard.html";
+    else if (me.role === "expert") location.href = "expert_dashboard.html";
+    else location.href = "dashboard.html";
+  } catch {}
+})();
+
+// ===== Tabs =====
+const loginTab = document.getElementById("loginTab");
+const registerTab = document.getElementById("registerTab");
+const loginForm = document.getElementById("loginForm");
+const registerForm = document.getElementById("registerForm");
+
+loginTab.onclick = () => {
+  showAuthMessage("");
+  loginTab.setAttribute("aria-pressed", "true");
+  registerTab.setAttribute("aria-pressed", "false");
+  loginTab.classList.add("active");
+  registerTab.classList.remove("active");
+  loginForm.classList.add("active");
+  registerForm.classList.remove("active");
+};
+
+registerTab.onclick = () => {
+  showAuthMessage("");
+  registerTab.setAttribute("aria-pressed", "true");
+  loginTab.setAttribute("aria-pressed", "false");
+  registerTab.classList.add("active");
+  loginTab.classList.remove("active");
+  registerForm.classList.add("active");
+  loginForm.classList.remove("active");
+};
+
+// ===== Login =====
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const submitButton = loginForm.querySelector('button[type="submit"]');
+  if (submitButton.disabled) return;
+  submitButton.disabled = true;
+  submitButton.textContent = "登入中…";
+  showAuthMessage("");
+
+  const email = loginEmail.value.trim();
+  const password = loginPassword.value;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await readAuthResponse(res);
+    if (!res.ok) return showAuthMessage(data.message || "登入失敗");
+    if (typeof data.token !== "string" || !data.token) throw new Error("登入服務未回傳有效憑證，請聯絡網站管理員。");
+
+    localStorage.setItem("token", data.token);
+
+    const meRes = await fetch(`${API_BASE}/api/me`, {
+      headers: { Authorization: "Bearer " + data.token }
+    });
+    const me = await readAuthResponse(meRes);
+    if (!meRes.ok) throw new Error(me.message || "登入成功，但無法讀取帳號資料，請稍後再試。");
+
+    if (me.role === "admin") location.href = "admin_dashboard.html";
+    else if (me.role === "expert") location.href = "expert_dashboard.html";
+    else location.href = "dashboard.html";
+  } catch (error) {
+    showAuthMessage(error instanceof TypeError ? "無法連線至帳號服務，請檢查網路後再試。" : error.message || "登入流程失敗，請稍後再試");
+    localStorage.removeItem("token");
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = "登入";
+  }
+});
+
+// ===== Register =====
+registerForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const submitButton = registerForm.querySelector('button[type="submit"]');
+  if (submitButton.disabled) return;
+  submitButton.disabled = true;
+  submitButton.textContent = "建立帳號中…";
+  showAuthMessage("");
+
+  const payload = {
+    username: regUsername.value.trim(),
+    email: regEmail.value.trim(),
+    password: regPassword.value
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await readAuthResponse(res);
+    showAuthMessage(data.message || (res.ok ? "註冊成功" : "註冊失敗"), res.ok);
+    if (res.ok || data.code === "EMAIL_ALREADY_EXISTS") {
+      document.getElementById("loginEmail").value = payload.email;
+      document.getElementById("loginPassword").value = "";
+      document.getElementById("regPassword").value = "";
+      loginTab.click();
+      showAuthMessage(res.ok ? "帳號建立成功，請登入開始使用。" : data.message || "此 Email 已有帳號，請直接登入。", res.ok);
+      document.getElementById("loginPassword").focus();
+    }
+  } catch (error) {
+    showAuthMessage(error instanceof TypeError ? "無法連線至帳號服務，請檢查網路後再試。" : error.message || "註冊失敗，請稍後再試。");
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = "註冊";
+  }
+});
+</script>
+</main>
+<footer class="site-footer"><span>ProFit Health · 陪你累積每一天的進步</span><span>運動紀錄 ／ 健康管理 ／ 專業陪伴</span></footer>
+</body>
+</html>

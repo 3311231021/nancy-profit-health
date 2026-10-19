@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>地圖運動：GPS + 計步</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 14px; background: #f5f5f5; }
+    h2 { margin: 6px 0 14px; }
+
+    #map { height: 320px; margin-bottom: 12px; border-radius: 12px; overflow: hidden; }
+
+    .card {
+      background: white; padding: 14px; margin-bottom: 12px;
+      border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.12);
+    }
+
+    .row { display:flex; gap:10px; flex-wrap: wrap; }
+    .field { flex: 1; min-width: 180px; }
+    label { display:block; font-weight:bold; margin-bottom:6px; }
+
+    select, input {
+      width: 100%; padding: 10px; border-radius: 10px;
+      border: 1px solid #ddd; font-size: 15px; background: #fff;
+    }
+
+    button {
+      width: 100%; padding: 12px; font-size: 16px;
+      border-radius: 12px; border: none; cursor: pointer;
+      color: white; margin-top: 10px;
+    }
+
+    .btn-start { background:#0d6efd; }
+    .btn-stop  { background:#ef4444; }
+    .btn-save  { background:#16a34a; }
+    .btn-back  { background:#64748b; }
+
+    .muted { color:#6b7280; font-size: 14px; }
+    .big { font-size: 20px; font-weight: bold; }
+    .ok { color:#16a34a; font-weight:bold; }
+    .warn { color:#dc2626; font-weight:bold; }
+    .mini { font-size: 13px; color:#6b7280; }
+  </style>
+  <link rel="stylesheet" href="theme.css">
+</head>
+
+<body class="site-page workspace-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="dashboard.html">總覽</a><a href="activity.html">運動紀錄</a><a href="health_record.html">健康紀錄</a></nav></header>
+<main id="main-content" class="app-main">
+
+  <h2> 地圖運動（GPS + 計步）</h2>
+
+  <!-- 設定區 -->
+  <div class="card">
+    <div class="row">
+      <div class="field">
+        <label>運動種類</label>
+        <select id="activityType">
+          <option value="走路">走路</option>
+          <option value="跑步">跑步</option>
+          <option value="騎車">騎車</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>運動時間（分鐘）</label>
+        <input id="manualMinutes" type="number" min="1" placeholder="例如：30（可不填，使用自動計時）" />
+        <div class="mini">開始/結束計時。</div>
+      </div>
+
+      <div class="field">
+        <label>卡路里（kcal，可選）</label>
+        <input id="calories" type="number" min="0" placeholder="可留空" />
+      </div>
+    </div>
+  </div>
+
+  <!-- 地圖 -->
+  <div id="map"></div>
+
+  <!-- 即時資訊 -->
+  <div class="card">
+    <div class="row">
+      <div class="field">
+        <div class="muted"> 步數</div>
+        <div class="big"><span id="steps">0</span> 步</div>
+      </div>
+
+      <div class="field">
+        <div class="muted"> 計時（僅顯示）</div>
+        <div class="big"><span id="duration">0</span> 分鐘</div>
+        <div class="mini">「運動時間（分鐘）」</div>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #eee;margin:12px 0;">
+
+    <div class="muted"> 位置：<span id="status">等待定位中...</span></div>
+    <div class="muted"> 狀態：<span id="stateText" class="warn">尚未開始</span></div>
+
+    <button id="btnStart" class="btn-start">開始運動</button>
+    <button id="btnStop"  class="btn-stop"  style="display:none;">結束運動</button>
+    <button id="btnSave"  class="btn-save"  style="display:none;">儲存運動紀錄（含步數）</button>
+    <button class="btn-back" onclick="location.href='dashboard.html'">回 Dashboard</button>
+
+    <div id="msg" class="muted" style="margin-top:10px;"></div>
+  </div>
+
+<script>
+  // ===== API 基本 =====
+  const API_BASE = "";
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("請先登入");
+    location.href = "auth.html";
+  }
+
+  async function api(path, method="GET", body=null) {
+    const res = await fetch(API_BASE + path, {
+      method,
+      headers: {
+        "Content-Type":"application/json",
+        "Authorization":"Bearer " + token
+      },
+      body: body ? JSON.stringify(body) : null
+    });
+
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) {
+      const t = await res.text();
+      throw new Error(`API 回傳非 JSON：${path} (${res.status})\n${t.slice(0,200)}`);
+    }
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || `API 錯誤：${path} (${res.status})`);
+    return data;
+  }
+
+  function setMsg(t){ document.getElementById("msg").textContent = t || ""; }
+
+  // ===== 地圖初始化 =====
+  const map = L.map("map").setView([25.033964, 121.564468], 16);
+  // OpenStreetMap 圖磚規定必須帶 Referer；全站 Referrer-Policy 為 same-origin，
+  // 這裡單獨讓圖磚請求送出網站來源（只有網域，不含路徑），否則會被擋成 403。
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    referrerPolicy: "strict-origin-when-cross-origin",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  let marker = L.marker([25.033964, 121.564468]).addTo(map);
+
+  // ===== GPS（只顯示，不影響儲存） =====
+  let watchId = null;
+
+  function startGPS() {
+    if (!navigator.geolocation) {
+      document.getElementById("status").innerText = "此裝置不支援 GPS";
+      return;
+    }
+
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const acc = pos.coords.accuracy;
+
+        document.getElementById("status").innerText =
+          `${lat.toFixed(6)}, ${lng.toFixed(6)}（誤差 ${acc.toFixed(0)}m）`;
+
+        marker.setLatLng([lat, lng]);
+        map.setView([lat, lng]);
+      },
+      (err) => {
+        console.warn("GPS 錯誤：", err.message);
+        // ✅ GPS 失敗不擋計步 / 儲存
+        document.getElementById("status").innerText =
+          "GPS 取得失敗（不影響步數/時間儲存）";
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 20000
+      }
+    );
+  }
+
+  function stopGPS() {
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
+  }
+
+  // ===== 計步器 =====
+  let steps = 0;
+  let lastPeak = 0;
+  let motionOn = false;
+
+  function startPedometer() {
+    if (motionOn) return;
+
+    const enable = () => {
+      window.addEventListener("devicemotion", onMotion);
+      motionOn = true;
+    };
+
+    if (typeof DeviceMotionEvent !== "undefined" &&
+        typeof DeviceMotionEvent.requestPermission === "function") {
+      // iPhone 需要使用者操作後授權
+      DeviceMotionEvent.requestPermission().then((res) => {
+        if (res === "granted") enable();
+        else alert("你沒有允許加速度感測器（計步無法使用）");
+      });
+    } else {
+      enable();
+    }
+  }
+
+  function stopPedometer() {
+    if (!motionOn) return;
+    window.removeEventListener("devicemotion", onMotion);
+    motionOn = false;
+  }
+
+  function onMotion(e) {
+    const acc = e.acceleration;
+    if (!acc) return;
+
+    const total = Math.abs(acc.x||0) + Math.abs(acc.y||0) + Math.abs(acc.z||0);
+
+    // 門檻可調：18~22 看手機敏感度
+    if (total > 18) {
+      const now = Date.now();
+      if (now - lastPeak > 300) {
+        steps++;
+        document.getElementById("steps").innerText = steps;
+        lastPeak = now;
+      }
+    }
+  }
+
+  // ===== 計時（顯示用） =====
+  let startTime = null;
+  let timer = null;
+
+  function startTimer() {
+    startTime = Date.now();
+    timer = setInterval(() => {
+      const mins = Math.floor((Date.now() - startTime) / 60000);
+      document.getElementById("duration").innerText = mins;
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  function getDurationMinutes() {
+    if (!startTime) return 0;
+    // ✅ 至少 1 分鐘，避免 0 分鐘被後端擋掉
+    return Math.max(1, Math.floor((Date.now() - startTime) / 60000));
+  }
+
+  // ===== 控制流程 =====
+  let started = false;
+  let finished = false;
+
+  function resetSession() {
+    steps = 0;
+    lastPeak = 0;
+    document.getElementById("steps").innerText = "0";
+    document.getElementById("duration").innerText = "0";
+    document.getElementById("status").innerText = "等待定位中...";
+    setMsg("");
+  }
+
+  document.getElementById("btnStart").onclick = () => {
+    if (started) return;
+    started = true;
+    finished = false;
+
+    resetSession();
+
+    document.getElementById("stateText").className = "ok";
+    document.getElementById("stateText").textContent = "運動中…";
+
+    document.getElementById("btnStart").style.display = "none";
+    document.getElementById("btnStop").style.display = "block";
+    document.getElementById("btnSave").style.display = "none";
+
+    startGPS();
+    startPedometer();
+    startTimer();
+
+    setMsg("已啟動 GPS + 計步器。運動結束請按「結束運動」。");
+  };
+
+  document.getElementById("btnStop").onclick = () => {
+    if (!started || finished) return;
+    finished = true;
+
+    stopGPS();
+    stopPedometer();
+    stopTimer();
+
+    document.getElementById("stateText").className = "muted";
+    document.getElementById("stateText").textContent = "已結束（可儲存）";
+
+    document.getElementById("btnStop").style.display = "none";
+    document.getElementById("btnSave").style.display = "block";
+
+    setMsg("運動已結束。按「儲存運動紀錄」把步數寫入資料庫。");
+  };
+
+  // ✅ 儲存：跟 dashboard 同一套 /api/activity
+  document.getElementById("btnSave").onclick = async () => {
+    try {
+      const activity_type = document.getElementById("activityType").value;
+
+      const manual = document.getElementById("manualMinutes").value;
+      const duration = manual ? Number(manual) : getDurationMinutes();
+
+      const caloriesVal = document.getElementById("calories").value;
+      const calories = caloriesVal === "" ? 0 : Number(caloriesVal);
+
+      const payload = { activity_type, duration, steps, calories };
+
+      // ✅✅ 這裡是關鍵：用 /api/activity（不要用 /api/activity_records）
+      await api("/api/activity", "POST", payload);
+
+      alert(`✅ 已儲存！\n${activity_type} ${duration} 分鐘｜步數 ${steps} 步`);
+      location.href = "dashboard.html";
+    } catch (e) {
+      console.error(e);
+      alert("❌ 儲存失敗：" + e.message);
+    }
+  };
+</script>
+
+</main>
+<footer class="site-footer"><span>ProFit Health · 陪你累積每一天的進步</span><span>運動紀錄 ／ 健康管理 ／ 專業陪伴</span></footer>
+</body>
+</html>

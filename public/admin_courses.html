@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProFit Health｜課程管理</title>
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body class="site-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="admin_dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="admin_dashboard.html">總覽</a><a href="admin_courses.html" aria-current="page">課程管理</a><a href="admin_sales.html">銷售統計</a><a href="checkin.html">QR Code 核銷</a></nav></header>
+<main id="main-content" class="app-main">
+  <p class="eyebrow">COURSE MANAGEMENT</p>
+  <h1>課程上架</h1>
+  <p class="page-intro">建立堂數課程（例如：教練 1 對 1 十堂 NT$1,000）或講座入場券（例如：營養講座）。學員購買後以 QR Code 扣堂或入場。</p>
+
+  <div class="card">
+    <div class="section-title" id="formTitle">新增課程</div>
+    <form id="courseForm" class="form-grid">
+      <div class="wide"><label for="title">課程名稱</label><input id="title" required maxlength="100" placeholder="例如：教練 1 對 1 私人課程（10 堂）"></div>
+      <div>
+        <label for="courseType">類型</label>
+        <select id="courseType">
+          <option value="session_pack">堂數課程（QR Code 扣堂）</option>
+          <option value="event">講座／活動（QR Code 入場）</option>
+        </select>
+      </div>
+      <div><label for="price">售價（含稅，元）</label><input id="price" type="number" min="1" step="1" required placeholder="1000"></div>
+      <div data-type="session_pack"><label for="sessions">堂數</label><input id="sessions" type="number" min="1" max="500" step="1" value="10"></div>
+      <div data-type="session_pack"><label for="validDays">有效天數（空白為不限）</label><input id="validDays" type="number" min="1" step="1" placeholder="例如 180"></div>
+      <div data-type="event" hidden><label for="eventAt">活動時間</label><input id="eventAt" type="datetime-local"></div>
+      <div data-type="event" hidden><label for="capacity">名額（空白為不限）</label><input id="capacity" type="number" min="1" step="1"></div>
+      <div><label for="location">地點</label><input id="location" maxlength="200" placeholder="例如：A 館 2F 教室"></div>
+      <div>
+        <label for="expert">負責專家（可核銷此課程）</label>
+        <select id="expert"><option value="">不指定（僅管理員核銷）</option></select>
+      </div>
+      <div>
+        <label for="status">狀態</label>
+        <select id="status"><option value="active">上架中</option><option value="archived">已下架</option></select>
+      </div>
+      <div class="wide"><label for="description">課程說明</label><textarea id="description" rows="3" maxlength="1000"></textarea></div>
+      <div class="wide actions" style="display:flex;">
+        <button type="submit" id="btnSave">上架課程</button>
+        <button type="button" class="secondary" id="btnReset" hidden>取消編輯</button>
+      </div>
+      <div class="wide err" id="formErr" role="alert"></div>
+    </form>
+  </div>
+
+  <div class="card" style="margin-top:24px;">
+    <div class="section-title">所有課程</div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>課程</th><th>類型</th><th>售價</th><th>內容</th><th>負責專家</th><th>已售出</th><th>狀態</th><th></th></tr></thead>
+        <tbody id="courseRows"><tr><td colspan="8" class="muted">讀取中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="pf-common.js"></script>
+<script>
+  let courses = [];
+  let editing = null;
+  const $ = (id) => document.getElementById(id);
+
+  function syncTypeFields() {
+    const t = $("courseType").value;
+    document.querySelectorAll("[data-type]").forEach(el => { el.hidden = el.dataset.type !== t; });
+  }
+  $("courseType").addEventListener("change", syncTypeFields);
+
+  function toLocalInput(v) {
+    if (!v) return "";
+    const d = new Date(v);
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(d).map(x => [x.type, x.value]));
+    return `${p.year}-${p.month}-${p.day}T${p.hour === "24" ? "00" : p.hour}:${p.minute}`;
+  }
+
+  function resetForm() {
+    editing = null;
+    $("courseForm").reset();
+    $("sessions").value = 10;
+    $("formTitle").textContent = "新增課程";
+    $("btnSave").textContent = "上架課程";
+    $("btnReset").hidden = true;
+    $("formErr").textContent = "";
+    syncTypeFields();
+  }
+  $("btnReset").addEventListener("click", resetForm);
+
+  function fillForm(c) {
+    editing = c.id;
+    $("title").value = c.title;
+    $("courseType").value = c.course_type;
+    $("price").value = c.price;
+    $("sessions").value = c.sessions;
+    $("validDays").value = c.valid_days ?? "";
+    $("eventAt").value = toLocalInput(c.event_at);
+    $("capacity").value = c.capacity ?? "";
+    $("location").value = c.location ?? "";
+    $("expert").value = c.expert_user_id ?? "";
+    $("status").value = c.status;
+    $("description").value = c.description ?? "";
+    $("formTitle").textContent = `編輯課程 #${c.id}`;
+    $("btnSave").textContent = "儲存變更";
+    $("btnReset").hidden = false;
+    syncTypeFields();
+    $("courseForm").scrollIntoView({ behavior: "smooth" });
+  }
+
+  $("courseForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const isEvent = $("courseType").value === "event";
+    const body = {
+      title: $("title").value,
+      course_type: $("courseType").value,
+      price: $("price").value,
+      sessions: isEvent ? 1 : $("sessions").value,
+      valid_days: isEvent ? "" : $("validDays").value,
+      // datetime-local 以台北時間解讀
+      event_at: isEvent && $("eventAt").value ? $("eventAt").value + ":00+08:00" : "",
+      capacity: isEvent ? $("capacity").value : "",
+      location: $("location").value,
+      expert_user_id: $("expert").value,
+      status: $("status").value,
+      description: $("description").value,
+    };
+    $("btnSave").disabled = true;
+    $("formErr").textContent = "";
+    try {
+      const r = await PF.api(editing ? `/api/admin/courses/${editing}` : "/api/admin/courses", editing ? "PUT" : "POST", body);
+      alert(r.message);
+      resetForm();
+      await loadCourses();
+    } catch (err) {
+      $("formErr").textContent = err.message;
+    }
+    $("btnSave").disabled = false;
+  });
+
+  function render() {
+    $("courseRows").innerHTML = courses.length ? courses.map(c => {
+      const isEvent = c.course_type === "event";
+      const detail = isEvent
+        ? [c.event_at ? PF.dt(c.event_at) : "", c.capacity ? `名額 ${c.capacity}` : "名額不限", c.location || ""].filter(Boolean).map(PF.esc).join("<br>")
+        : [`${c.sessions} 堂`, c.valid_days ? `${c.valid_days} 天內有效` : "不限期限", c.location || ""].filter(Boolean).map(PF.esc).join("<br>");
+      return `<tr>
+        <td><b>${PF.esc(c.title)}</b></td>
+        <td><span class="tag ${isEvent ? "event" : ""}">${PF.COURSE_TYPE[c.course_type]}</span></td>
+        <td>${PF.money(c.price)}</td>
+        <td style="font-size:13px;">${detail}</td>
+        <td>${PF.esc(c.expert_name || "-")}</td>
+        <td>${PF.num(c.sold)}</td>
+        <td>${c.status === "active" ? "上架中" : `<span class="muted">已下架</span>`}</td>
+        <td style="white-space:nowrap;">
+          <button type="button" class="secondary small" data-edit="${c.id}">編輯</button>
+          <button type="button" class="secondary small" data-toggle="${c.id}">${c.status === "active" ? "下架" : "重新上架"}</button>
+        </td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="8" class="muted">尚未建立課程，請使用上方表單新增。</td></tr>`;
+  }
+
+  $("courseRows").addEventListener("click", async e => {
+    const edit = e.target.closest("button[data-edit]");
+    const toggle = e.target.closest("button[data-toggle]");
+    if (edit) fillForm(courses.find(c => c.id === Number(edit.dataset.edit)));
+    if (toggle) {
+      const c = courses.find(x => x.id === Number(toggle.dataset.toggle));
+      toggle.disabled = true;
+      try {
+        await PF.api(`/api/admin/courses/${c.id}`, "PUT", { ...c, status: c.status === "active" ? "archived" : "active" });
+        await loadCourses();
+      } catch (err) { alert(err.message); toggle.disabled = false; }
+    }
+  });
+
+  async function loadCourses() {
+    courses = await PF.api("/api/admin/courses");
+    render();
+  }
+
+  (async () => {
+    try { await PF.guard(["admin"]); } catch { return; }
+    try {
+      const experts = await PF.api("/api/admin/experts");
+      $("expert").innerHTML += experts.map(x =>
+        `<option value="${x.expert_user_id}">${PF.esc((x.title ? x.title + "｜" : "") + x.username)}</option>`).join("");
+      await loadCourses();
+    } catch (err) {
+      $("courseRows").innerHTML = `<tr><td colspan="8" class="err">${PF.esc(err.message)}</td></tr>`;
+    }
+    syncTypeFields();
+  })();
+</script>
+</body>
+</html>

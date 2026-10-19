@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProFit Health｜購買課程</title>
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body class="site-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="dashboard.html">總覽</a><a href="activity.html">運動紀錄</a><a href="health_record.html">健康紀錄</a><a href="courses.html" aria-current="page">購買課程</a><a href="my_courses.html">我的課程</a></nav></header>
+<main id="main-content" class="app-main">
+  <p class="eyebrow">COURSES</p>
+  <h1>購買課程</h1>
+  <p class="page-intro">教練 1 對 1 堂數課程與健康講座。付款完成後，到「我的課程」出示 QR Code 即可上課扣堂或入場。</p>
+
+  <div class="tab-bar" role="group" aria-label="課程類型">
+    <button type="button" data-filter="all" aria-pressed="true">全部</button>
+    <button type="button" data-filter="session_pack" aria-pressed="false">堂數課程</button>
+    <button type="button" data-filter="event" aria-pressed="false">講座／活動</button>
+  </div>
+  <div id="msg" class="notice"></div>
+  <div id="courseGrid" class="course-grid"><div class="empty">讀取中…</div></div>
+</main>
+
+<dialog id="buyDialog" class="pf-dialog" aria-labelledby="buyTitle">
+  <form id="buyForm" method="dialog">
+    <h3 id="buyTitle">確認購買</h3>
+    <p id="buySummary"></p>
+    <label for="invoiceType">電子發票</label>
+    <select id="invoiceType">
+      <option value="member">會員載具（寄送至註冊 Email）</option>
+      <option value="mobile">手機條碼載具</option>
+      <option value="donation">捐贈發票</option>
+      <option value="company">公司戶（打統編）</option>
+    </select>
+    <div data-for="mobile" hidden style="margin-top:12px;">
+      <label for="carrierNum">手機條碼</label>
+      <input id="carrierNum" placeholder="/ABC1234" maxlength="8" autocomplete="off">
+    </div>
+    <div data-for="donation" hidden style="margin-top:12px;">
+      <label for="loveCode">捐贈碼</label>
+      <input id="loveCode" placeholder="例如 168001" inputmode="numeric" maxlength="7">
+    </div>
+    <div data-for="company" hidden style="margin-top:12px;" class="form-grid">
+      <div><label for="taxId">統一編號</label><input id="taxId" inputmode="numeric" maxlength="8"></div>
+      <div><label for="companyName">公司名稱</label><input id="companyName" maxlength="60"></div>
+      <div class="wide"><label for="companyAddr">公司地址</label><input id="companyAddr" maxlength="100"></div>
+    </div>
+    <div id="testNote" class="notice" hidden>目前為綠界<strong>測試環境</strong>，不會實際扣款。測試卡號 4311-9522-2222-2222，有效期限填未來日期，安全碼任意 3 碼，簡訊驗證碼 1234。</div>
+    <div id="buyErr" class="err" role="alert"></div>
+    <div class="actions" style="display:flex; justify-content:flex-end; margin-top:16px;">
+      <button type="button" class="secondary" id="btnCancel">取消</button>
+      <button type="submit" id="btnPay">前往綠界刷卡</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="pf-common.js"></script>
+<script>
+  let courses = [];
+  let filter = "all";
+  let selected = null;
+  const grid = document.getElementById("courseGrid");
+  const dialog = document.getElementById("buyDialog");
+  const invoiceType = document.getElementById("invoiceType");
+
+  function render() {
+    const rows = courses.filter(c => filter === "all" || c.course_type === filter);
+    if (!rows.length) {
+      grid.innerHTML = `<div class="empty">目前沒有上架的課程。</div>`;
+      return;
+    }
+    grid.innerHTML = rows.map(c => {
+      const isEvent = c.course_type === "event";
+      const full = c.capacity && Number(c.sold) >= Number(c.capacity);
+      const unit = isEvent ? "／張" : `／${c.sessions} 堂`;
+      const meta = [
+        c.expert_name ? `${c.expert_title ? PF.esc(c.expert_title) + "｜" : ""}${PF.esc(c.expert_name)}` : "",
+        isEvent && c.event_at ? `時間 ${PF.dt(c.event_at)}` : "",
+        c.location ? `地點 ${PF.esc(c.location)}` : "",
+        c.valid_days ? `購買後 ${c.valid_days} 天內有效` : "",
+        c.capacity ? `名額 ${PF.num(c.sold)} / ${PF.num(c.capacity)}` : "",
+        !isEvent && c.sessions > 1 ? `平均每堂 ${PF.money(Math.round(c.price / c.sessions))}` : "",
+      ].filter(Boolean).map(s => `<span>${s}</span>`).join("");
+      return `
+        <article class="card course-card">
+          <div><span class="tag ${isEvent ? "event" : ""}">${PF.COURSE_TYPE[c.course_type]}</span></div>
+          <h3>${PF.esc(c.title)}</h3>
+          <div class="price">${PF.money(c.price)}<small>${unit}</small></div>
+          <div class="meta">${meta}</div>
+          <p class="desc">${PF.esc(c.description || "")}</p>
+          <button type="button" data-buy="${c.id}" ${full ? "disabled" : ""}>${full ? "名額已滿" : "立即購買"}</button>
+        </article>`;
+    }).join("");
+  }
+
+  document.querySelector(".tab-bar").addEventListener("click", e => {
+    const b = e.target.closest("button[data-filter]");
+    if (!b) return;
+    filter = b.dataset.filter;
+    document.querySelectorAll(".tab-bar button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    render();
+  });
+
+  grid.addEventListener("click", e => {
+    const b = e.target.closest("button[data-buy]");
+    if (!b) return;
+    selected = courses.find(c => c.id === Number(b.dataset.buy));
+    if (!selected) return;
+    document.getElementById("buySummary").innerHTML =
+      `<strong>${PF.esc(selected.title)}</strong><br>${selected.course_type === "event" ? "入場券 1 張" : `${selected.sessions} 堂`}，金額 <strong>${PF.money(selected.price)}</strong>（含稅）`;
+    document.getElementById("buyErr").textContent = "";
+    dialog.showModal();
+  });
+
+  invoiceType.addEventListener("change", () => {
+    document.querySelectorAll("[data-for]").forEach(el => { el.hidden = el.dataset.for !== invoiceType.value; });
+  });
+  document.getElementById("btnCancel").addEventListener("click", () => dialog.close());
+
+  document.getElementById("buyForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const btn = document.getElementById("btnPay");
+    const errBox = document.getElementById("buyErr");
+    errBox.textContent = "";
+    btn.disabled = true;
+    btn.textContent = "建立訂單中…";
+    try {
+      const r = await PF.api("/api/orders", "POST", {
+        course_id: selected.id,
+        invoice_type: invoiceType.value,
+        carrier_num: document.getElementById("carrierNum").value,
+        love_code: document.getElementById("loveCode").value,
+        company_tax_id: document.getElementById("taxId").value,
+        company_name: document.getElementById("companyName").value,
+        company_address: document.getElementById("companyAddr").value,
+      });
+      btn.textContent = "前往綠界中…";
+      PF.submitCheckout(r.checkout);
+    } catch (err) {
+      errBox.textContent = err.message;
+      btn.disabled = false;
+      btn.textContent = "前往綠界刷卡";
+    }
+  });
+
+  (async () => {
+    try {
+      await PF.guard(["user"]);
+      const [list, config] = await Promise.all([PF.api("/api/courses"), PF.api("/api/payment/config")]);
+      courses = list;
+      document.getElementById("testNote").hidden = !config.test_mode;
+      render();
+    } catch (err) {
+      document.getElementById("msg").textContent = err.message;
+      grid.innerHTML = "";
+    }
+  })();
+</script>
+</body>
+</html>

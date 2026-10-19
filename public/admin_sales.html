@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProFit Health｜銷售與課程統計</title>
+  <link rel="stylesheet" href="theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="site-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="admin_dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="admin_dashboard.html">總覽</a><a href="admin_courses.html">課程管理</a><a href="admin_sales.html" aria-current="page">銷售統計</a><a href="checkin.html">QR Code 核銷</a></nav></header>
+<main id="main-content" class="app-main">
+  <p class="eyebrow">SALES &amp; USAGE</p>
+  <h1>銷貨收入與課程使用統計</h1>
+  <p class="page-intro">以付款完成時間（台北時間）統計。銷售額與稅額依 5% 營業稅由含稅金額換算。</p>
+  <div id="modeNote" class="notice"></div>
+
+  <div class="toolbar">
+    <div><label for="from">起日</label><input type="date" id="from"></div>
+    <div><label for="to">迄日</label><input type="date" id="to"></div>
+    <button type="button" id="btnApply">套用</button>
+    <button type="button" class="secondary" data-range="month">本月</button>
+    <button type="button" class="secondary" data-range="year">今年</button>
+    <button type="button" class="secondary" data-range="all">全部</button>
+  </div>
+
+  <div class="stat-row" id="tiles"></div>
+
+  <div class="card" style="margin-top:24px;">
+    <div class="section-title">近 12 個月銷貨收入（含稅）</div>
+    <canvas id="monthlyChart" height="110" role="img" aria-label="近 12 個月每月銷貨收入長條圖"></canvas>
+    <details style="margin-top:12px;">
+      <summary class="muted" style="cursor:pointer;">以表格檢視</summary>
+      <div class="table-scroll"><table><thead><tr><th>月份</th><th>訂單數</th><th>銷貨收入（含稅）</th><th>銷售額（未稅）</th><th>稅額</th></tr></thead><tbody id="monthlyRows"></tbody></table></div>
+    </details>
+  </div>
+
+  <div class="card" style="margin-top:24px;">
+    <div class="section-title">各課程銷售與使用狀況</div>
+    <p class="hint">堂數使用率 =（已售出堂數 − 剩餘堂數）÷ 已售出堂數。銷售欄位依上方日期區間，堂數與核銷為累計。</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>課程</th><th>售出訂單</th><th>銷貨收入</th><th>售出堂數／張數</th><th>已使用</th><th>剩餘</th><th>使用率</th><th>使用中學員</th><th>近 30 天核銷</th></tr></thead>
+        <tbody id="courseRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px;">
+    <div class="sectionTitle" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div class="section-title" style="margin:0;">訂單與電子發票</div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <select id="statusFilter" aria-label="付款狀態" style="width:auto;">
+          <option value="">全部狀態</option><option value="paid">已付款</option><option value="pending">待付款</option><option value="failed">付款失敗</option>
+        </select>
+        <button type="button" class="secondary small" id="btnCsv">匯出 CSV</button>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>付款時間</th><th>訂單編號</th><th>學員</th><th>項目</th><th>金額</th><th>付款</th><th>發票</th><th></th></tr></thead>
+        <tbody id="orderRows"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="pf-common.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let chart = null;
+  let orders = [];
+
+  function taipeiToday() {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  }
+
+  document.querySelectorAll("[data-range]").forEach(b => b.addEventListener("click", () => {
+    const today = taipeiToday();
+    if (b.dataset.range === "month") { $("from").value = today.slice(0, 8) + "01"; $("to").value = today; }
+    if (b.dataset.range === "year") { $("from").value = today.slice(0, 5) + "01-01"; $("to").value = today; }
+    if (b.dataset.range === "all") { $("from").value = ""; $("to").value = ""; }
+    load();
+  }));
+  $("btnApply").addEventListener("click", load);
+  $("statusFilter").addEventListener("change", loadOrders);
+
+  function query() {
+    const p = new URLSearchParams();
+    if ($("from").value) p.set("from", $("from").value);
+    if ($("to").value) p.set("to", $("to").value);
+    return p;
+  }
+
+  function tile(label, value, sub = "") {
+    return `<div class="stat-tile"><span class="label">${label}</span><span class="value">${value}</span>${sub ? `<span class="sub">${sub}</span>` : ""}</div>`;
+  }
+
+  function renderStats(s) {
+    const inv = Object.fromEntries(s.invoices.map(r => [r.status, r]));
+    $("modeNote").textContent = s.test_mode ? "目前使用綠界測試環境（金流與電子發票皆為測試資料，不會實際扣款或上傳財政部）。" : "";
+    $("tiles").innerHTML = [
+      tile("銷貨收入（含稅）", PF.money(s.totals.revenue), `${PF.num(s.totals.orders)} 筆訂單`),
+      tile("銷售額（未稅）", PF.money(s.totals.net_sales)),
+      tile("營業稅額", PF.money(s.totals.tax)),
+      tile("購買學員數", PF.num(s.totals.buyers), "人"),
+      tile("已開立發票", PF.num(inv.issued?.count), PF.money(inv.issued?.amount)),
+      tile("發票待處理", PF.num((inv.failed?.count || 0) + (inv.pending?.count || 0)), inv.void ? `已作廢 ${PF.num(inv.void.count)} 張` : "開立失敗可於下方重試"),
+      tile("近 30 天核銷", PF.num(s.checkins.last_30d), `累計 ${PF.num(s.checkins.total)} 次`),
+    ].join("");
+
+    $("monthlyRows").innerHTML = s.monthly.length ? s.monthly.map(m => `<tr><td>${m.month}</td><td>${PF.num(m.orders)}</td><td>${PF.money(m.revenue)}</td><td>${PF.money(m.net_sales)}</td><td>${PF.money(m.revenue - m.net_sales)}</td></tr>`).join("")
+      : `<tr><td colspan="5" class="muted">尚無付款資料</td></tr>`;
+
+    if (typeof Chart !== "undefined") {
+      chart?.destroy();
+      chart = new Chart($("monthlyChart"), {
+        type: "bar",
+        data: { labels: s.monthly.map(m => m.month), datasets: [{ label: "銷貨收入", data: s.monthly.map(m => m.revenue), backgroundColor: "#285b45", hoverBackgroundColor: "#1d4634", borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "bottom", maxBarThickness: 36 }] },
+        options: {
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${PF.money(c.parsed.y)}（${PF.num(s.monthly[c.dataIndex].orders)} 筆）` } } },
+          scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#dce2d7" }, border: { display: false }, ticks: { callback: (v) => PF.num(v) } } },
+          font: { family: '"PingFang TC", "Microsoft JhengHei", sans-serif' },
+        },
+      });
+    }
+
+    $("courseRows").innerHTML = s.by_course.length ? s.by_course.map(c => {
+      const used = c.sessions_sold - c.sessions_left;
+      const rate = c.sessions_sold ? Math.round((used / c.sessions_sold) * 100) : 0;
+      return `<tr>
+        <td><b>${PF.esc(c.title)}</b> ${c.status === "archived" ? `<span class="tag muted-tag">已下架</span>` : ""}
+          <div class="muted" style="font-size:12px;">${PF.COURSE_TYPE[c.course_type]}・${PF.money(c.price)}${c.expert_name ? "・" + PF.esc(c.expert_name) : ""}</div></td>
+        <td>${PF.num(c.orders)}</td>
+        <td>${PF.money(c.revenue)}</td>
+        <td>${PF.num(c.sessions_sold)}${c.capacity ? ` <span class="muted">/ 名額 ${PF.num(c.capacity)}</span>` : ""}</td>
+        <td>${PF.num(used)}</td>
+        <td>${PF.num(c.sessions_left)}</td>
+        <td style="min-width:120px;">${rate}%<div class="meter" style="margin:4px 0 0;"><span style="width:${rate}%"></span></div></td>
+        <td>${PF.num(c.active_students)}</td>
+        <td>${PF.num(c.checkins_30d)}</td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="9" class="muted">尚未建立課程</td></tr>`;
+  }
+
+  function invoiceCell(o) {
+    if (o.status !== "paid") return `<span class="muted">-</span>`;
+    const type = PF.INVOICE_TYPE[o.invoice_type] + (o.company_tax_id ? ` ${PF.esc(o.company_tax_id)}` : "");
+    if (o.invoice_status === "issued") return `${PF.esc(o.invoice_no)}<div class="muted" style="font-size:12px;">${type}</div>`;
+    if (o.invoice_status === "void") return `<span class="muted">${PF.esc(o.invoice_no)}（已作廢）</span>`;
+    return `<span class="tag bad">${PF.esc(PF.INVOICE_STATUS[o.invoice_status] || "未開立")}</span>${o.invoice_error ? `<div class="muted" style="font-size:12px;">${PF.esc(o.invoice_error)}</div>` : ""}`;
+  }
+
+  function orderActions(o) {
+    if (o.status === "pending") return `<button type="button" class="secondary small" data-sync="${o.id}">查詢付款</button>`;
+    if (o.status !== "paid") return "";
+    if (o.invoice_status === "issued") return `<button type="button" class="secondary small" data-void="${o.invoice_id}">作廢發票</button>`;
+    if (["failed", "pending"].includes(o.invoice_status)) return `<button type="button" class="small" data-invoice="${o.id}">重新開立</button>`;
+    return "";
+  }
+
+  async function loadOrders() {
+    const p = query();
+    if ($("statusFilter").value) p.set("status", $("statusFilter").value);
+    try {
+      orders = await PF.api("/api/admin/orders?" + p);
+      $("orderRows").innerHTML = orders.length ? orders.map(o => `<tr>
+        <td>${PF.dt(o.paid_at || o.created_at)}</td>
+        <td class="mono" style="font-size:12px;">${PF.esc(o.merchant_trade_no)}${o.ecpay_trade_no ? `<div class="muted">綠界 ${PF.esc(o.ecpay_trade_no)}</div>` : ""}</td>
+        <td>${PF.esc(o.username)}<div class="muted" style="font-size:12px;">${PF.esc(o.email)}</div></td>
+        <td>${PF.esc(o.item_name)}</td>
+        <td>${PF.money(o.amount)}</td>
+        <td>${PF.esc(PF.ORDER_STATUS[o.status])}${o.simulated && o.status !== "paid" ? `<div class="muted" style="font-size:12px;">收到模擬付款通知（不變更狀態）</div>` : ""}</td>
+        <td>${invoiceCell(o)}</td>
+        <td style="white-space:nowrap;">${orderActions(o)}</td>
+      </tr>`).join("") : `<tr><td colspan="8" class="muted">此區間沒有訂單</td></tr>`;
+    } catch (err) {
+      $("orderRows").innerHTML = `<tr><td colspan="8" class="err">${PF.esc(err.message)}</td></tr>`;
+    }
+  }
+
+  $("orderRows").addEventListener("click", async e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    let path;
+    let body = null;
+    if (b.dataset.sync) path = `/api/admin/orders/${b.dataset.sync}/sync`;
+    if (b.dataset.invoice) path = `/api/admin/orders/${b.dataset.invoice}/invoice`;
+    if (b.dataset.void) {
+      const reason = prompt("作廢原因（例如：退款）", "退款");
+      if (!reason) return;
+      path = `/api/admin/invoices/${b.dataset.void}/void`;
+      body = { reason };
+    }
+    b.disabled = true;
+    try {
+      const r = await PF.api(path, "POST", body);
+      if (b.dataset.sync && r.status !== "paid") alert("綠界尚未收到這筆訂單的付款。");
+      else if (r.message) alert(r.message);
+      await load();
+    } catch (err) { alert(err.message); b.disabled = false; }
+  });
+
+  $("btnCsv").addEventListener("click", () => {
+    const head = ["付款時間", "訂單編號", "綠界交易編號", "學員", "Email", "項目", "金額(含稅)", "銷售額(未稅)", "稅額", "付款狀態", "發票號碼", "發票狀態", "發票類型", "統一編號"];
+    const rows = orders.map(o => {
+      const net = Math.round(o.amount / 1.05);
+      return [PF.dt(o.paid_at || o.created_at), o.merchant_trade_no, o.ecpay_trade_no || "", o.username, o.email, o.item_name, o.amount, net, o.amount - net,
+        PF.ORDER_STATUS[o.status], o.invoice_no || "", PF.INVOICE_STATUS[o.invoice_status] || "", PF.INVOICE_TYPE[o.invoice_type], o.company_tax_id || ""];
+    });
+    const csv = [head, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `orders-${taipeiToday()}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  async function load() {
+    try {
+      renderStats(await PF.api("/api/admin/stats?" + query()));
+    } catch (err) {
+      $("tiles").innerHTML = `<div class="notice">${PF.esc(err.message)}</div>`;
+    }
+    await loadOrders();
+  }
+
+  (async () => {
+    try { await PF.guard(["admin"]); } catch { return; }
+    if (typeof Chart !== "undefined") {
+      Chart.defaults.color = "#65756b";
+      Chart.defaults.font.family = '"PingFang TC", "Microsoft JhengHei", sans-serif';
+    }
+    load();
+  })();
+</script>
+</body>
+</html>

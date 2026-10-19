@@ -1,0 +1,31 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ProFit Health 初始化</title><style>body{font:16px system-ui;background:#f0f5f9;color:#16283c;margin:0;padding:24px}main{max-width:520px;margin:30px auto;background:white;padding:28px;border-radius:16px}label{display:block;margin-top:20px}input{box-sizing:border-box;width:100%;padding:12px;margin-top:8px;font:inherit;border:1px solid #aab9c8;border-radius:8px}button{background:#205d81;color:white;border:0;padding:14px;width:100%;margin-top:24px;border-radius:8px;font:inherit}pre{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}</style><link rel="stylesheet" href="theme.css"></head><body class="site-page setup-page"><a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="auth.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="auth.html">返回登入</a></nav></header><main id="main-content"><h1>建立專題測試帳號</h1><p>僅第一次使用需要執行。建立管理員、學員與教練帳號，並加入少量展示資料。三個帳號使用你在此設定的密碼。</p><form id="form"><label>初始化金鑰<input id="key" type="password" required minlength="32" autocomplete="off"></label><label>管理員 Email<input id="email" type="email" required autocomplete="username"></label><label>測試帳號密碼<input id="password" type="password" required minlength="12" maxlength="72" autocomplete="new-password"></label><button id="submit">建立帳號與測試資料</button></form><pre id="result" role="status"></pre><h2>重設管理員帳密</h2><p>已完成初始化但無法登入管理員時使用。輸入初始化金鑰後，可更換管理員 Email 與密碼（至少 12 字元）。若這個 Email 之前已用註冊頁註冊成學員帳號，會直接把該帳號升級為管理員；若資料庫中還沒有管理員，會建立一個新的管理員帳號。</p><form id="resetForm"><label>初始化金鑰<input id="resetKey" type="password" required minlength="32" autocomplete="off"></label><label>新的管理員 Email<input id="resetEmail" type="email" required autocomplete="username"></label><label>新的管理員密碼（至少 12 字元）<input id="resetPassword" type="password" required minlength="12" maxlength="72" autocomplete="new-password"></label><button id="resetSubmit">重設管理員帳密</button></form><pre id="resetResult" role="status"></pre><a href="auth.html">前往登入</a></main><script>
+const form=document.getElementById('form'),button=document.getElementById('submit'),result=document.getElementById('result'),key=document.getElementById('key'),email=document.getElementById('email'),password=document.getElementById('password');
+form.onsubmit=async e=>{
+  e.preventDefault();button.disabled=true;result.textContent='正在建立…';
+  try{
+    const response=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json','X-Setup-Key':key.value},body:JSON.stringify({admin_email:email.value,password:password.value})});
+    let data;
+    try{data=await response.json();}
+    catch{result.textContent=`初始化 API 未回傳有效 JSON（HTTP ${response.status}）。請檢查 api Function 部署與 /api/setup 路由。`;return;}
+    if(!data||typeof data!=='object'||Array.isArray(data)){
+      result.textContent=`初始化 API 回應格式錯誤（HTTP ${response.status}）。請檢查後端設定。`;return;
+    }
+    result.textContent=(typeof data.message==='string'?data.message:(response.ok?'初始化完成。':`初始化失敗（HTTP ${response.status}）。`))+(response.ok&&data.accounts?'\n管理員：'+data.accounts.admin+'\n學員：'+data.accounts.user+'\n教練：'+data.accounts.expert:'');
+    if(response.ok){key.value='';password.value='';form.hidden=true;}
+  }catch{result.textContent='無法連線至初始化 API，請檢查網路連線後重試。';}
+  finally{button.disabled=false;}
+};
+const resetForm=document.getElementById('resetForm'),resetButton=document.getElementById('resetSubmit'),resetResult=document.getElementById('resetResult'),resetKey=document.getElementById('resetKey'),resetEmail=document.getElementById('resetEmail'),resetPassword=document.getElementById('resetPassword');
+resetForm.onsubmit=async e=>{
+  e.preventDefault();resetButton.disabled=true;resetResult.textContent='正在重設…';
+  try{
+    const response=await fetch('/api/setup/reset-admin',{method:'POST',headers:{'Content-Type':'application/json','X-Setup-Key':resetKey.value},body:JSON.stringify({admin_email:resetEmail.value,password:resetPassword.value})});
+    let data;
+    try{data=await response.json();}
+    catch{resetResult.textContent=`重設 API 未回傳有效 JSON（HTTP ${response.status}）。`;return;}
+    resetResult.textContent=(data&&typeof data.message==='string'?data.message:(response.ok?'重設完成。':`重設失敗（HTTP ${response.status}）。`))+(response.ok&&data.accounts?'\n管理員：'+data.accounts.admin:'');
+    if(response.ok){resetKey.value='';resetPassword.value='';}
+  }catch{resetResult.textContent='無法連線至重設 API，請檢查網路連線後重試。';}
+  finally{resetButton.disabled=false;}
+};
+</script><footer class="site-footer"><span>ProFit Health · 陪你累積每一天的進步</span><span>運動紀錄 ／ 健康管理 ／ 專業陪伴</span></footer></body></html>

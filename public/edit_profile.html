@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>修改資料</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body class="site-page compact-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="dashboard.html">總覽</a><a href="activity.html">運動紀錄</a><a href="health_record.html">健康紀錄</a></nav></header>
+<main id="main-content" class="app-main">
+
+
+<h2>修改顯示名稱</h2>
+
+<input type="text" id="username" placeholder="新的顯示名稱"><br><br>
+<button id="saveBtn">儲存變更</button><br><br>
+
+<button onclick="window.location.href='dashboard.html'">回首頁</button>
+
+<script>
+document.getElementById("saveBtn").onclick = async () => {
+    const username = document.getElementById("username").value;
+    const token = localStorage.getItem("token");
+
+    if (!username) {
+        return alert("請輸入顯示名稱");
+    }
+
+    const res = await fetch("/api/me", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ username })
+    });
+
+    const data = await res.json();
+    alert(data.message);
+
+    if (res.ok) {
+        window.location.href = "member.html";
+    }
+};
+</script>
+
+</main>
+<footer class="site-footer"><span>ProFit Health · 陪你累積每一天的進步</span><span>運動紀錄 ／ 健康管理 ／ 專業陪伴</span></footer>
+</body>
+</html>

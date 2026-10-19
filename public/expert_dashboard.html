@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProFit Health｜專家 Dashboard</title>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+
+    .topbar {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #1f8a5b; /* 專家偏綠主色 */
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .brand small {
+      display: block;
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    .actions { display: flex; gap: 10px; }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-weight: 700;
+      background: #1f8a5b;
+      color: #fff;
+    }
+    button.secondary {
+      background: #eef2f7;
+      color: #111827;
+    }
+    button:hover { opacity: .95; }
+
+    .wrap {
+      max-width: 980px;
+      margin: 18px auto;
+      padding: 0 16px 28px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.08);
+      padding: 16px;
+      margin-top: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+    }
+
+    .meBox { grid-column: span 12; }
+    .listBox { grid-column: span 12; }
+
+    @media (min-width: 860px) {
+      .meBox { grid-column: span 4; }
+      .listBox { grid-column: span 8; }
+    }
+
+    .k {
+      font-size: 12px;
+      color: #6b7280;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .v {
+      font-size: 14px;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .sectionTitle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .sectionTitle h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 900;
+    }
+    .pill {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(31,138,91,.10);
+      color: #1f8a5b;
+      font-weight: 900;
+    }
+
+    .clientRow {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 10px;
+      background: #fff;
+    }
+
+    .clientMain {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .clientName {
+      font-size: 15px;
+      font-weight: 900;
+      color: #111827;
+    }
+    .clientMeta {
+      font-size: 13px;
+      color: #6b7280;
+      word-break: break-word;
+    }
+
+    .clientRight {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      min-width: 160px;
+    }
+    .tag {
+      font-size: 12px;
+      font-weight: 900;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef2f7;
+      color: #111827;
+    }
+    .last {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .empty {
+      padding: 12px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 14px;
+      color: #64748b;
+      background: #fbfdff;
+      line-height: 1.5;
+    }
+
+    .err {
+      margin-top: 10px;
+      color: #b91c1c;
+      font-weight: 800;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+
+    a.link {
+      color: #1f8a5b;
+      font-weight: 900;
+      text-decoration: none;
+    }
+    a.link:hover { text-decoration: underline; }
+
+    /* 讓整列變成可點連結 + hover 效果 */
+    .rowLink {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .rowLink .clientRow {
+      cursor: pointer;
+      transition: transform .06s ease, box-shadow .06s ease, border-color .06s ease;
+    }
+    .rowLink:hover .clientRow {
+      border-color: rgba(31,138,91,.35);
+      box-shadow: 0 12px 26px rgba(0,0,0,.10);
+      transform: translateY(-1px);
+    }
+  </style>
+  <link rel="stylesheet" href="theme.css">
+</head>
+
+<body class="site-page workspace-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="expert_dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="expert_dashboard.html" aria-current="page">總覽</a><a href="checkin.html">QR Code 核銷</a><a href="payroll.html">出勤與薪資</a></nav></header>
+<main id="main-content" class="app-main">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <div>
+        <h1>專家 Dashboard</h1>
+        <small id="subTitle">載入中…</small>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="secondary" id="btnRefresh" type="button">重新整理</button>
+      <button id="btnLogout" type="button">登出</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="grid">
+      <div class="card meBox">
+        <div class="sectionTitle">
+          <h2>我的資訊</h2>
+          <span class="pill" id="rolePill">role</span>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div class="k">顯示名稱</div>
+          <div class="v" id="meName">-</div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div class="k">Email</div>
+          <div class="v" id="meEmail">-</div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div class="k">專業類型</div>
+          <div class="v" id="meTitle">-</div>
+          <div class="k" style="margin-top:6px;">（由 expert_profiles 來）</div>
+        </div>
+
+        <div class="err" id="errBox"></div>
+      </div>
+
+      <div class="card listBox">
+        <div class="sectionTitle">
+          <h2>我的個案清單</h2>
+          <span class="pill" id="countPill">0 位</span>
+        </div>
+
+        <div id="clientList"></div>
+
+        <div class="hint" style="margin-top:10px; color:#6b7280; font-size:12px; font-weight:800;">
+          下一步可以：點開個案 → overview → 回饋/指派任務。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+function safeText(v){return String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+    const API_BASE = "";
+
+    const subTitle = document.getElementById("subTitle");
+    const rolePill = document.getElementById("rolePill");
+    const meName = document.getElementById("meName");
+    const meEmail = document.getElementById("meEmail");
+    const meTitle = document.getElementById("meTitle");
+    const errBox = document.getElementById("errBox");
+
+    const clientList = document.getElementById("clientList");
+    const countPill = document.getElementById("countPill");
+
+    document.getElementById("btnLogout").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      location.href = "auth.html";
+    });
+
+    document.getElementById("btnRefresh").addEventListener("click", () => {
+      loadAll();
+    });
+
+    function formatDT(dt) {
+      if (!dt) return "尚無運動紀錄";
+      return String(dt).replace("T", " ").replace(".000Z", "");
+    }
+
+    function setError(msg) {
+      errBox.textContent = msg || "";
+    }
+
+    async function fetchJSON(url, token) {
+      const res = await fetch(url, {
+        headers: { Authorization: "Bearer " + token }
+      });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    async function guardExpert(token) {
+      const meRes = await fetchJSON(`${API_BASE}/api/me`, token);
+      if (!meRes.ok) {
+        localStorage.removeItem("token");
+        location.href = "auth.html";
+        return null;
+      }
+      const me = meRes.data;
+
+      if (me.role !== "expert") {
+        if (me.role === "user") location.href = "dashboard.html";
+        else location.href = "auth.html";
+        return null;
+      }
+      return me;
+    }
+
+    async function loadMeAndClients() {
+      setError("");
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        location.href = "auth.html";
+        return;
+      }
+
+      const me = await guardExpert(token);
+      if (!me) return;
+
+      subTitle.textContent = `歡迎，${me.username}`;
+      rolePill.textContent = me.role;
+      meName.textContent = me.username || "-";
+      meEmail.textContent = me.email || "-";
+
+      const listRes = await fetchJSON(`${API_BASE}/api/expert/clients`, token);
+
+      if (!listRes.ok) {
+        setError(`讀取個案清單失敗 (${listRes.status})\n${listRes.data?.message || ""}\n${listRes.data?.error || ""}`);
+        clientList.innerHTML = `<div class="empty">目前無法讀取個案清單，請確認後端 /api/expert/clients 是否已建立。</div>`;
+        return;
+      }
+
+      const rows = Array.isArray(listRes.data) ? listRes.data : [];
+      countPill.textContent = `${rows.length} 位`;
+
+      if (rows.length > 0) {
+        meTitle.textContent = rows[0].title
+          ? `${rows[0].title}（${rows[0].specialty}）`
+          : (rows[0].specialty || "-");
+      } else {
+        meTitle.textContent = "-";
+      }
+
+      if (rows.length === 0) {
+        clientList.innerHTML = `
+          <div class="empty">
+            目前沒有指派的個案。<br/>
+            請確認 expert_assignments 是否有資料（status=active）。<br/>
+            或回到 <a class="link" href="auth.html">auth.html</a> 重新登入。
+          </div>
+        `;
+        return;
+      }
+
+      // ✅ 每列可點 → 帶 clientId 給 expert_client.html
+      clientList.innerHTML = rows.map(r => `
+        <a class="rowLink" href="expert_client.html?clientId=${encodeURIComponent(r.client_id)}">
+          <div class="clientRow">
+            <div class="clientMain">
+              <div class="clientName">${safeText(r.username)}（ID: ${r.client_id}）</div>
+              <div class="clientMeta">${safeText(r.email)}</div>
+            </div>
+            <div class="clientRight">
+              <div class="tag">${r.status}</div>
+              <div class="last">最近運動：${formatDT(r.last_activity_at)}</div>
+            </div>
+          </div>
+        </a>
+      `).join("");
+    }
+
+    async function loadAll() {
+      await loadMeAndClients();
+    }
+
+    loadAll();
+  </script>
+</main>
+<footer class="site-footer"><span>ProFit Health · 陪你累積每一天的進步</span><span>運動紀錄 ／ 健康管理 ／ 專業陪伴</span></footer>
+</body>
+</html>

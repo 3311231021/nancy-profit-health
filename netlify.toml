@@ -1,0 +1,27 @@
+[build]
+command = "npm run build"
+publish = "public"
+functions = "netlify/functions"
+
+[build.environment]
+NODE_VERSION = "22"
+
+[database.migrations]
+path = "netlify/database/migrations"
+
+[functions]
+node_bundler = "esbuild"
+included_files = ["server/exports/nancy-profit-health-source.zip"]
+
+[[headers]]
+for = "/*"
+[headers.values]
+X-Content-Type-Options = "nosniff"
+Referrer-Policy = "same-origin"
+X-Frame-Options = "DENY"
+
+[[redirects]]
+from = "/api/*"
+to = "/.netlify/functions/api/api/:splat"
+status = 200
+force = true

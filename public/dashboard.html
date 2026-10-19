@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>健康運動儀表板</title>
+
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f7fb; margin: 20px; }
+    h2 { font-size: 28px; font-weight: bold; margin-bottom: 15px; }
+    .btn-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 10px; }
+    .btn-row button {
+      padding: 10px 16px;
+      background:#0d6efd; color:#fff;
+      border:none; border-radius:10px;
+      cursor:pointer;
+    }
+    .btn-row button:hover { opacity: .9; }
+
+    .card {
+      background:#fff; padding:18px; margin-top:18px;
+      border-radius:14px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    }
+    .section-title { font-size: 20px; margin-bottom: 10px; font-weight: bold; }
+    .muted { color:#6b7280; }
+    .list-item { padding: 10px 0; border-bottom: 1px solid #e5e7eb; font-size: 15px; }
+    .list-item:last-child { border-bottom: none; }
+    canvas { width:100%; max-height: 340px; }
+
+    .warn { color:#dc2626; font-weight:bold; margin-top: 10px; }
+    .ok { color:#16a34a; font-weight:bold; margin-top: 10px; }
+
+    .row { display:grid; grid-template-columns: 1fr; gap: 18px; }
+    @media (min-width: 980px) { .row { grid-template-columns: 1fr 1fr; } }
+
+    .hint { color:#6b7280; margin-top:10px; }
+
+    /* Q&A */
+    .qaBox { display:flex; flex-direction:column; gap:10px; }
+    .qaForm { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start; }
+    .qaForm textarea {
+      flex: 1;
+      min-width: 240px;
+      min-height: 70px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+      resize: vertical;
+    }
+    .qaForm button {
+      background: #16a34a;
+      border: none;
+      color: white;
+      font-weight: 800;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    .badge {
+      display:inline-block;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 900;
+      background: #eef2f7;
+      color: #111827;
+      margin-right: 6px;
+    }
+    .badge.open { background: rgba(251,191,36,.18); color: #92400e; }
+    .badge.answered { background: rgba(34,197,94,.15); color: #166534; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="theme.css">
+</head>
+
+<body class="site-page dashboard-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="dashboard.html" aria-current="page">總覽</a><a href="activity.html">運動紀錄</a><a href="health_record.html">健康紀錄</a><a href="courses.html">購買課程</a><a href="my_courses.html">我的課程</a></nav></header>
+<main id="main-content" class="app-main">
+
+
+<!-- VERSION: dashboard-2026-01-27 -->
+<p class="eyebrow">MY WELLNESS JOURNAL</p>
+<h2 id="welcome">歡迎回來！</h2>
+<p class="page-intro">今天也為自己留一點時間。你的每一份努力，都在這裡累積。</p>
+
+<div class="btn-row">
+  <button onclick="location.href='member.html'">會員資料</button>
+  <button onclick="location.href='edit_profile.html'">修改資料</button>
+  <button onclick="location.href='goal_setting.html'">設定目標</button>
+  <button onclick="location.href='activity.html'">新增運動紀錄</button>
+  <button onclick="location.href='map_activity.html'">地圖運動</button>
+  <button onclick="location.href='health_record.html'">新增健康紀錄</button>
+  <button onclick="location.href='courses.html'">購買課程</button>
+  <button onclick="location.href='my_courses.html'">我的課程 / QR Code</button>
+  <button onclick="logout()">登出</button>
+</div>
+
+<!-- 今日狀況 + 今日目標 -->
+<div class="summary-grid">
+  <div class="card today-card">
+    <div class="section-title">今日狀態</div>
+    <div class="metric-grid">
+      <div><span class="metric-label">運動時間</span><span id="today_minutes" class="metric-value">0</span><span class="metric-unit">分鐘</span></div>
+      <div><span class="metric-label">消耗熱量</span><span id="today_calories" class="metric-value">0</span><span class="metric-unit">kcal</span></div>
+      <div><span class="metric-label">累積步數</span><span id="today_steps" class="metric-value">0</span><span class="metric-unit">步</span></div>
+    </div>
+    <div class="health-summary"><span>今日體重 <strong id="today_weight">--</strong> kg</span><span>今日 BMI <strong id="today_bmi">--</strong></span></div>
+    <div id="goal_status" class="muted" style="margin-top:10px;"></div>
+  </div>
+  <div class="card">
+    <div class="section-title">朝目標，再靠近一點</div>
+    <div class="goal-line"><span>每日運動時間</span><strong><span id="goal_minutes">--</span> 分鐘</strong></div>
+    <div class="goal-line"><span>每日消耗熱量</span><strong><span id="goal_calories">--</span> kcal</strong></div>
+    <div class="goal-line"><span>每日步數</span><strong><span id="goal_steps">--</span> 步</strong></div>
+    <div class="hint"><a href="goal_setting.html">調整我的目標 →</a></div>
+  </div>
+</div>
+
+<!-- ✅ 專家任務/回饋 + 提問（1+2 一起做） -->
+<div class="row">
+  <div class="card">
+    <div class="section-title"> 專家任務 / 回饋</div>
+    <div id="expertNotesBox" class="muted">讀取中...</div>
+    <div class="hint">專家為你安排的任務與回饋，都會顯示在這裡。</div>
+  </div>
+
+  <div class="card">
+    <div class="section-title"> 問專家問題</div>
+    <div class="qaBox">
+      <div class="qaForm">
+        <div id="myExperts" class="muted" style="margin-bottom:8px;"></div>
+        <select id="qExpert" aria-label="提問對象" style="display:none; margin-bottom:8px; padding:8px; border-radius:10px; border:1px solid #d1d5db;"></select>
+        <textarea id="qText" placeholder="例如：我走路膝蓋痛，應該怎麼調整？"></textarea>
+        <button id="btnAsk" type="button">送出提問</button>
+      </div>
+      <div id="qaList" class="muted">讀取中...</div>
+      <div class="hint">（你送出的問題會在這裡顯示，專家回覆後你也會看到。）</div>
+    </div>
+  </div>
+</div>
+
+<!-- 近 30 天達標率 -->
+<div class="card">
+  <div class="section-title"> 近 30 天達標率（以「運動時間」為準）</div>
+  <div id="goalRateText" class="muted" style="margin-top:10px;"></div>
+  <canvas id="goalRateBar"></canvas>
+</div>
+
+<!-- 最新紀錄 -->
+<div class="card">
+  <div class="section-title"> 最新紀錄</div>
+
+  <h4> 最新運動紀錄（5筆）</h4>
+  <div id="latest_activity" class="muted">讀取中...</div>
+
+  <h4 style="margin-top:14px;"> 最新健康紀錄（5筆）</h4>
+  <div id="latest_health" class="muted">讀取中...</div>
+</div>
+
+<!-- 本週 / 本月 -->
+<div class="row">
+  <div class="card">
+    <div class="section-title"> 本週運動統計（最近 7 天）</div>
+    <canvas id="weeklyChart"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="section-title"> 本月運動統計（最近 30 天）</div>
+    <canvas id="monthlyChart"></canvas>
+  </div>
+</div>
+
+<!-- 類型直方圖 + BMI -->
+<div class="row">
+  <div class="card">
+    <div class="section-title"> 運動類型統計（累計分鐘，直方圖）</div>
+    <canvas id="activityTypeChart"></canvas>
+    <div class="hint">柱子上方會顯示累計運動時間（分鐘）</div>
+  </div>
+
+  <div class="card">
+    <div class="section-title"> BMI 趨勢</div>
+    <canvas id="bmiChart"></canvas>
+    <div id="bmiHint" class="muted" style="margin-top:10px;"></div>
+  </div>
+</div>
+
+<script>
+  if (typeof Chart !== "undefined") {
+    Chart.defaults.color = "#65756b";
+    Chart.defaults.borderColor = "#dce2d7";
+    Chart.defaults.backgroundColor = "#8ca982";
+    Chart.defaults.elements.line.borderColor = "#285b45";
+    Chart.defaults.elements.point.backgroundColor = "#285b45";
+    Chart.defaults.font.family = '"PingFang TC", "Microsoft JhengHei", sans-serif';
+    Chart.defaults.plugins.colors.enabled = false;
+  }
+
+function safeText(v){return String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+  const API_BASE = "";
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    alert("請先登入");
+    location.href = "auth.html";
+  }
+
+  function logout() {
+    localStorage.removeItem("token");
+    location.href = "auth.html";
+  }
+
+  // ---------------- 時間處理 ----------------
+  function parseCreatedAt(v) {
+    if (!v) return null;
+
+    if (typeof v === "number") {
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    const s0 = String(v).trim();
+    if (!s0) return null;
+
+    if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}$/.test(s0)) {
+      const iso = s0.replace(" ", "T") + "Z";
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    if (s0.includes("Z") || /[+\-]\d{2}:\d{2}$/.test(s0)) {
+      const d = new Date(s0);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    const m = s0.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(上午|下午)\s*(\d{1,2}):(\d{2}):(\d{2})$/);
+    if (m) {
+      const [, y, mo, da, ap, hhRaw, mi, ss] = m;
+      let hh = parseInt(hhRaw, 10);
+      if (ap === "上午") {
+        if (hh === 12) hh = 0;
+      } else {
+        if (hh !== 12) hh += 12;
+      }
+      const hh2 = String(hh).padStart(2, "0");
+      const d = new Date(`${y}-${mo}-${da}T${hh2}:${mi}:${ss}`);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    let d = new Date(s0);
+    if (!isNaN(d.getTime())) return d;
+
+    d = new Date(s0.replaceAll("/", "-"));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function formatTWDateTime(created_at) {
+    const d = parseCreatedAt(created_at);
+    if (!d) return "-";
+    return d.toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false });
+  }
+
+  function twDateKeyFromCreatedAt(created_at) {
+    const d = parseCreatedAt(created_at);
+    if (!d) return null;
+
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Taipei",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(d);
+
+    const y = parts.find(p => p.type === "year")?.value;
+    const m = parts.find(p => p.type === "month")?.value;
+    const day = parts.find(p => p.type === "day")?.value;
+    if (!y || !m || !day) return null;
+
+    return `${y}-${m}-${day}`;
+  }
+
+  function todayTWKey() {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Taipei",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(new Date());
+
+    const y = parts.find(p => p.type === "year")?.value;
+    const m = parts.find(p => p.type === "month")?.value;
+    const d = parts.find(p => p.type === "day")?.value;
+    return `${y}-${m}-${d}`;
+  }
+
+  function makeTWDateKeys(days) {
+    const keys = [];
+    const twNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei" }));
+    twNow.setHours(0,0,0,0);
+
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(twNow);
+      d.setDate(d.getDate() - i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      keys.push(`${y}-${m}-${day}`);
+    }
+    return keys;
+  }
+
+  // ---------------- API helpers ----------------
+  async function api(path, method = "GET", body = null) {
+    const res = await fetch(API_BASE + path, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: body ? JSON.stringify(body) : null
+    });
+
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) {
+      const t = await res.text();
+      throw new Error(`API 回傳非 JSON：${path} (${res.status}) ${t.slice(0,120)}`);
+    }
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || `API 錯誤：${path} (${res.status})`);
+    return data;
+  }
+
+  async function apiTry(paths) {
+    let lastErr = null;
+    for (const p of paths) {
+      try { return await api(p); } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error("找不到可用 API");
+  }
+
+  function destroyIfExists(name) {
+    if (window[name] && typeof window[name].destroy === "function") {
+      window[name].destroy();
+    }
+  }
+
+  // ✅ 柱狀圖柱頂顯示「xx 分鐘」
+  const barValueLabelPlugin = {
+    id: "barValueLabelPlugin",
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      const meta = chart.getDatasetMeta(0);
+      if (!meta || !meta.data) return;
+
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.font = "12px Arial";
+
+      meta.data.forEach((bar, index) => {
+        const value = chart.data.datasets[0].data[index];
+        if (value === null || value === undefined) return;
+        ctx.fillText(`${value} 分鐘`, bar.x, bar.y - 6);
+      });
+
+      ctx.restore();
+    }
+  };
+
+  // ---------------- caches ----------------
+  let cachedGoals = null;
+  let cachedActivities = [];
+  let cachedHealth = [];
+
+  // ---------------- loaders ----------------
+  async function loadUser() {
+    const user = await api("/api/me");
+    if (user.role === "admin") { location.replace("admin_dashboard.html"); return; }
+    if (user.role === "expert") { location.replace("expert_dashboard.html"); return; }
+    document.getElementById("welcome").textContent = `歡迎回來，${user.username}！`;
+  }
+
+  async function loadGoals() {
+    const g = await api("/api/goals");
+    cachedGoals = g;
+
+    document.getElementById("goal_minutes").textContent = g.daily_minutes ?? 30;
+    document.getElementById("goal_calories").textContent = g.daily_calories ?? 300;
+    document.getElementById("goal_steps").textContent = g.daily_steps ?? 5000;
+  }
+
+  async function loadActivitiesAndHealth() {
+    cachedActivities = await apiTry(["/api/activity", "/api/activity_records"]);
+    cachedHealth = await apiTry(["/api/health", "/api/health_records"]);
+
+    cachedActivities = (cachedActivities || []).filter(x => twDateKeyFromCreatedAt(x.created_at));
+    cachedHealth = (cachedHealth || []).filter(x => twDateKeyFromCreatedAt(x.created_at));
+
+    cachedActivities = [...cachedActivities].sort((a, b) => (parseCreatedAt(b.created_at)?.getTime() || 0) - (parseCreatedAt(a.created_at)?.getTime() || 0));
+    cachedHealth = [...cachedHealth].sort((a, b) => (parseCreatedAt(b.created_at)?.getTime() || 0) - (parseCreatedAt(a.created_at)?.getTime() || 0));
+  }
+
+  async function renderTodayStatus() {
+    const today = todayTWKey();
+
+    let minutes = 0, calories = 0, steps = 0;
+    cachedActivities.forEach(r => {
+      const day = twDateKeyFromCreatedAt(r.created_at);
+      if (day === today) {
+        minutes += Number(r.duration) || 0;
+        calories += Number(r.calories) || 0;
+        steps += Number(r.steps) || 0;
+      }
+    });
+
+    document.getElementById("today_minutes").textContent = minutes;
+    document.getElementById("today_calories").textContent = calories;
+    document.getElementById("today_steps").textContent = steps;
+
+    const hToday = cachedHealth.find(x => twDateKeyFromCreatedAt(x.created_at) === today);
+    if (hToday) {
+      document.getElementById("today_weight").textContent = hToday.weight ?? "--";
+      document.getElementById("today_bmi").textContent = hToday.bmi ?? "--";
+    }
+
+    const target = (cachedGoals?.daily_minutes ?? 30);
+    const goalStatus = document.getElementById("goal_status");
+    if (minutes >= target) {
+      goalStatus.className = "ok";
+      goalStatus.textContent = `✅ 今日已達成「運動時間」目標（${minutes} / ${target} 分鐘）`;
+    } else {
+      goalStatus.className = "warn";
+      goalStatus.textContent = `❌ 今日尚未達成「運動時間」目標（${minutes} / ${target} 分鐘）`;
+    }
+  }
+
+  async function renderLatestRecords() {
+    const act = cachedActivities.slice(0, 5).map(r => `
+      <div class="list-item">
+        📅 ${formatTWDateTime(r.created_at)}<br>
+        ▪ ${r.activity_type ?? "未分類"} ${r.duration ?? 0} 分鐘
+        ｜步數：${r.steps ?? 0} 步
+        ｜卡路里：${r.calories ?? 0} kcal
+      </div>
+    `).join("");
+
+    document.getElementById("latest_activity").innerHTML = act || "無運動紀錄";
+
+    const h = cachedHealth.slice(0, 5).map(r => `
+      <div class="list-item">
+        📅 ${formatTWDateTime(r.created_at)}<br>
+        身高：${r.height ?? "--"} cm ｜體重：${r.weight ?? "--"} kg ｜BMI：${r.bmi ?? "--"}
+      </div>
+    `).join("");
+
+    document.getElementById("latest_health").innerHTML = h || "無健康紀錄";
+  }
+
+  async function renderWeeklyChart() {
+    const keys = makeTWDateKeys(7);
+    const map = Object.fromEntries(keys.map(k => [k, 0]));
+
+    cachedActivities.forEach(r => {
+      const day = twDateKeyFromCreatedAt(r.created_at);
+      if (day && map[day] !== undefined) map[day] += Number(r.duration) || 0;
+    });
+
+    destroyIfExists("weeklyChartInstance");
+    const ctx = document.getElementById("weeklyChart");
+    window.weeklyChartInstance = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: keys,
+        datasets: [{
+          label: "運動時間（分鐘）",
+          data: keys.map(k => map[k]),
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } },
+        plugins: { tooltip: { callbacks: { label: (c) => ` ${c.parsed.y} 分鐘` } } }
+      }
+    });
+  }
+
+  async function renderMonthlyChart() {
+    const keys = makeTWDateKeys(30);
+    const map = Object.fromEntries(keys.map(k => [k, 0]));
+
+    cachedActivities.forEach(r => {
+      const day = twDateKeyFromCreatedAt(r.created_at);
+      if (day && map[day] !== undefined) map[day] += Number(r.duration) || 0;
+    });
+
+    destroyIfExists("monthlyChartInstance");
+    const ctx = document.getElementById("monthlyChart");
+    window.monthlyChartInstance = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: keys,
+        datasets: [{
+          label: "運動時間（分鐘）",
+          data: keys.map(k => map[k]),
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } },
+        plugins: { tooltip: { callbacks: { label: (c) => ` ${c.parsed.y} 分鐘` } } }
+      }
+    });
+  }
+
+  async function renderGoalRateBar() {
+    const keys = makeTWDateKeys(30);
+    const map = Object.fromEntries(keys.map(k => [k, 0]));
+
+    cachedActivities.forEach(r => {
+      const day = twDateKeyFromCreatedAt(r.created_at);
+      if (day && map[day] !== undefined) map[day] += Number(r.duration) || 0;
+    });
+
+    const target = (cachedGoals?.daily_minutes ?? 30);
+    const activeDays = keys.filter(d => map[d] > 0);
+
+    let success = 0, fail = 0;
+    keys.forEach(d => {
+      const v = map[d];
+      if (v > 0) (v >= target ? success++ : fail++);
+    });
+
+    document.getElementById("goalRateText").textContent =
+      `近 30 天中，有運動紀錄的天數：${activeDays.length} 天；達標：${success} 次；未達標：${fail} 次。（目標：${target} 分鐘/天）`;
+
+    destroyIfExists("goalRateBarInstance");
+    const ctx = document.getElementById("goalRateBar");
+
+    window.goalRateBarInstance = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: keys,
+        datasets: [{
+          label: "每日運動時間（分鐘）",
+          data: keys.map(d => map[d])
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: (c) => {
+                const v = c.parsed.y || 0;
+                const ok = v >= target && v > 0;
+                return ` ${v} 分鐘（${ok ? "達標 ✅" : (v>0 ? "未達標 ❌" : "無紀錄")}）`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  async function renderActivityTypeBar() {
+    const map = {};
+    cachedActivities.forEach(r => {
+      const type = r.activity_type || "未分類";
+      map[type] = (map[type] || 0) + (Number(r.duration) || 0);
+    });
+
+    const items = Object.entries(map)
+      .map(([type, minutes]) => ({ type, minutes }))
+      .sort((a, b) => b.minutes - a.minutes);
+
+    const labels = items.map(x => x.type);
+    const data = items.map(x => x.minutes);
+
+    destroyIfExists("activityTypeChartInstance");
+    const ctx = document.getElementById("activityTypeChart");
+
+    window.activityTypeChartInstance = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          label: "累計運動時間（分鐘）",
+          data
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } },
+        plugins: { tooltip: { callbacks: { label: (c) => ` ${c.label}：${c.parsed.y} 分鐘` } } }
+      },
+      plugins: [barValueLabelPlugin]
+    });
+  }
+
+  async function renderBmiChart() {
+    const hint = document.getElementById("bmiHint");
+    hint.textContent = "";
+
+    destroyIfExists("bmiChartInstance");
+
+    if (!cachedHealth || cachedHealth.length === 0) {
+      hint.textContent = "尚無健康紀錄，請先新增健康紀錄（身高/體重）才會有 BMI 趨勢。";
+      return;
+    }
+
+    const list = [...cachedHealth].sort((a, b) => (parseCreatedAt(a.created_at)?.getTime() || 0) - (parseCreatedAt(b.created_at)?.getTime() || 0));
+    const labels = list.map(r => twDateKeyFromCreatedAt(r.created_at)).filter(Boolean);
+    const data = list.map(r => Number(r.bmi) || 0);
+
+    const ctx = document.getElementById("bmiChart");
+    window.bmiChartInstance = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "BMI",
+          data,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: false } },
+        plugins: { tooltip: { callbacks: { label: (c) => ` BMI：${c.parsed.y}` } } }
+      }
+    });
+  }
+
+  // ================= ✅ 學員端：專家 notes =================
+  async function loadExpertNotes() {
+    const box = document.getElementById("expertNotesBox");
+    box.textContent = "讀取中...";
+
+    try {
+      const notes = await api("/api/client/notes?limit=8");
+
+      if (!notes || notes.length === 0) {
+        box.textContent = "目前沒有專家任務/回饋。";
+        return;
+      }
+
+      box.innerHTML = notes.map(n => {
+        const who = n.expert_name ? `（${n.expert_name}）` : "";
+        const badge = n.note_type === "task"
+          ? `<span class="badge">task</span>`
+          : `<span class="badge">feedback</span>`;
+
+        const targetLine = n.note_type === "task"
+          ? `<div class="muted">目標：日期 ${n.target_date ?? "-"} ｜ 分鐘 ${n.target_minutes ?? "-"} ｜ 步數 ${n.target_steps ?? "-"} ｜ 卡路里 ${n.target_calories ?? "-"}</div>`
+          : "";
+
+        return `
+          <div class="list-item">
+            ${badge}
+            <span class="mono">${formatTWDateTime(n.created_at)}</span>
+            <span class="muted">${who}</span><br>
+            <b>${safeText(n.content)}</b>
+            ${targetLine}
+          </div>
+        `;
+      }).join("");
+    } catch (e) {
+      box.innerHTML = `<div class="warn">讀取失敗：${safeText(e.message)}</div>`;
+    }
+  }
+
+  // ================= ✅ 學員端：Q&A =================
+  async function loadMyQuestions() {
+    const list = document.getElementById("qaList");
+    list.textContent = "讀取中...";
+
+    try {
+      const rows = await api("/api/client/questions?limit=30");
+      if (!rows || rows.length === 0) {
+        list.textContent = "你目前還沒有提問。";
+        return;
+      }
+
+      list.innerHTML = rows.map(r => {
+        const st = r.status || "open";
+        const badge = `<span class="badge ${st}">${st}</span>`;
+        const expert = r.expert_name ? `｜專家：${r.expert_name}` : "｜（尚未指派專家）";
+
+        const reply = r.reply
+          ? `<div style="margin-top:8px; padding:10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px;">
+               <b>專家回覆：</b>${safeText(r.reply)}<br>
+               <span class="muted mono">${r.replied_at ? formatTWDateTime(r.replied_at) : ""}</span>
+             </div>`
+          : `<div class="muted" style="margin-top:6px;">尚未回覆</div>`;
+
+        return `
+          <div class="list-item">
+            ${badge}
+            <span class="mono">${formatTWDateTime(r.created_at)}</span>
+            <span class="muted">${expert}</span>
+            <div style="margin-top:6px;"><b>Q：</b>${safeText(r.question)}</div>
+            ${reply}
+          </div>
+        `;
+      }).join("");
+    } catch (e) {
+      list.innerHTML = `<div class="warn">讀取失敗：${safeText(e.message)}</div>`;
+    }
+  }
+
+  async function loadMyExperts() {
+    const info = document.getElementById("myExperts");
+    const sel = document.getElementById("qExpert");
+    try {
+      const rows = await api("/api/client/experts");
+      if (!rows || rows.length === 0) {
+        info.textContent = "目前尚未配對專家，管理員配對後即可向專家提問。";
+        sel.style.display = "none";
+        return;
+      }
+      const label = r => `${r.title ? r.title + "｜" : ""}${r.username}`;
+      info.textContent = "我的專家：" + rows.map(label).join("、");
+      sel.innerHTML = rows.map(r => `<option value="${r.expert_user_id}">${safeText("問 " + label(r))}</option>`).join("");
+      sel.style.display = rows.length > 1 ? "block" : "none";
+    } catch (e) {
+      info.textContent = "";
+      sel.style.display = "none";
+    }
+  }
+
+  async function submitQuestion() {
+    const btn = document.getElementById("btnAsk");
+    const t = document.getElementById("qText");
+    const q = String(t.value || "").trim();
+
+    if (!q) {
+      alert("請輸入問題");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "送出中...";
+
+    try {
+      const expertId = Number(document.getElementById("qExpert").value) || undefined;
+      await api("/api/client/questions", "POST", { question: q, expert_user_id: expertId });
+      t.value = "";
+      await loadMyQuestions();
+      alert("已送出提問！");
+    } catch (e) {
+      alert("送出失敗：" + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "送出提問";
+    }
+  }
+
+  document.getElementById("btnAsk").addEventListener("click", submitQuestion);
+
+  // ---------------- init ----------------
+  (async function init() {
+    try {
+      await loadUser();
+      await loadGoals();
+      await loadActivitiesAndHealth();
+
+      await renderTodayStatus();
+      await renderGoalRateBar();
+
+      await renderLatestRecords();
+      await renderWeeklyChart();
+      await renderMonthlyChart();
+
+      await renderActivityTypeBar();
+      await renderBmiChart();
+
+      // ✅ 新增：任務/回饋 + Q&A
+      await loadMyExperts();
+      await loadExpertNotes();
+      await loadMyQuestions();
+
+    } catch (e) {
+      console.error(e);
+      alert("Dashboard 載入失敗：" + e.message);
+    }
+  })();
+</script>
+
+</main>
+<footer class="site-footer"><span>ProFit Health · 陪你累積每一天的進步</span><span>運動紀錄 ／ 健康管理 ／ 專業陪伴</span></footer>
+</body>
+</html>

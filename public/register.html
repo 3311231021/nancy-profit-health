@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>註冊</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body class="site-page compact-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="auth.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="auth.html">返回登入</a></nav></header>
+<main id="main-content" class="app-main">
+
+
+<h2>註冊帳號</h2>
+
+<form id="registerForm">
+    <label>Email</label><br>
+    <input type="email" id="email" required><br><br>
+
+    <label>密碼</label><br>
+    <input type="password" id="password" required><br><br>
+
+    <label>顯示名稱</label><br>
+    <input type="text" id="username" required><br><br>
+
+    <button type="submit">建立帳號</button>
+</form>
+
+<script src="auth-response.js"></script>
+<script>
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const username = document.getElementById("username").value;
+
+    try {
+        const res = await fetch("/api/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password, username }),
+        });
+
+        const data = await readAuthResponse(res);
+        alert(data.message);
+
+        if (res.ok || data.code === "EMAIL_ALREADY_EXISTS") {
+            window.location.href = "auth.html";
+        }
+
+    } catch (err) {
+        alert(err instanceof TypeError ? "無法連線至帳號服務，請檢查網路後再試。" : err.message || "註冊失敗，請稍後再試。");
+    }
+});
+</script>
+
+</main>
+<footer class="site-footer"><span>ProFit Health · 陪你累積每一天的進步</span><span>運動紀錄 ／ 健康管理 ／ 專業陪伴</span></footer>
+</body>
+</html>

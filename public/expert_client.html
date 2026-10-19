@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProFit Health｜個案概覽</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Arial, sans-serif; background:#f4f7fb; color:#111827; }
+    .top { background:#fff; border-bottom:1px solid #e5e7eb; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; }
+    .top h1 { margin:0; font-size:18px; font-weight:900; }
+    .btn { border:none; border-radius:10px; padding:10px 12px; font-weight:800; cursor:pointer; }
+    .btn.primary { background:#1f8a5b; color:#fff; }
+    .btn.gray { background:#eef2f7; color:#111827; }
+    .wrap { max-width: 980px; margin: 18px auto; padding: 0 16px 28px; }
+    .card { background:#fff; border-radius:16px; box-shadow:0 10px 28px rgba(0,0,0,.08); padding:16px; margin-top:14px; }
+    .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:12px; }
+    .col6 { grid-column: span 12; }
+    @media (min-width: 860px) { .col6 { grid-column: span 6; } }
+    .k { font-size:12px; color:#6b7280; font-weight:900; margin-bottom:6px; }
+    .v { font-size:14px; font-weight:900; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { border-bottom:1px solid #e5e7eb; padding:10px 8px; font-size:13px; text-align:left; }
+    th { color:#374151; font-weight:900; background:#fbfdff; }
+    .err { color:#b91c1c; font-weight:900; white-space:pre-wrap; margin-bottom:10px; }
+
+    textarea, input {
+      width:100%;
+      border:1px solid #d1d5db;
+      border-radius:12px;
+      padding:10px 12px;
+      outline:none;
+      font-size:14px;
+    }
+    textarea:focus, input:focus { border-color:#1f8a5b; box-shadow:0 0 0 3px rgba(31,138,91,.12); }
+    .row { display:flex; gap:10px; align-items:center; }
+    .row > div { flex:1; }
+    .noteItem {
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:12px;
+      margin-top:10px;
+      background:#fff;
+    }
+    .badge {
+      display:inline-block;
+      font-size:12px;
+      font-weight:900;
+      padding:4px 10px;
+      border-radius:999px;
+      background:#eef2f7;
+      color:#111827;
+      margin-right:8px;
+    }
+    .badge.green { background: rgba(31,138,91,.12); color:#1f8a5b; }
+    .muted { color:#6b7280; font-size:12px; font-weight:800; }
+    .debug { color:#374151; font-weight:900; }
+
+    /* ===== Q&A ===== */
+    .qaItem { border:1px solid #e5e7eb; border-radius:14px; padding:12px; margin-top:10px; background:#fff; }
+    .qaMeta { font-size:12px; color:#6b7280; font-weight:800; margin-top:2px; }
+    .qaQ { margin-top:8px; font-weight:900; }
+    .qaA { margin-top:10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:10px; }
+    .qaReplyRow { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .miniBtn{ border:none; border-radius:10px; padding:10px 12px; font-weight:900; cursor:pointer; }
+    .miniBtn.send{ background:#1f8a5b; color:#fff; }
+    .miniBtn.refresh{ background:#eef2f7; color:#111827; }
+    .badge.open{background:rgba(251,191,36,.18);color:#92400e}
+    .badge.answered{background:rgba(34,197,94,.15);color:#166534}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+  </style>
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body class="site-page workspace-page">
+<a class="skip-link" href="#main-content">跳至主要內容</a><header class="site-header"><a class="site-brand" href="expert_dashboard.html" aria-label="ProFit Health 首頁"><svg class="brand-symbol" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#285b45"/><path d="M10 22h6l3-10 4 17 3-9h5" fill="none" stroke="#fffefa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="brand-name">ProFit Health</span><span class="brand-caption">健康，從日常開始</span></span></a><nav class="site-nav" aria-label="主要導覽"><a href="expert_dashboard.html">總覽</a></nav></header>
+<main id="main-content" class="app-main">
+
+  <div class="top">
+    <div>
+      <h1 id="title">個案概覽</h1>
+      <div style="color:#6b7280; font-size:12px; font-weight:800;" id="subtitle">載入中…</div>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn gray" id="btnBack" type="button">回專家 Dashboard</button>
+      <button class="btn primary" id="btnLogout" type="button">登出</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="err" id="errBox"></div>
+
+    <div class="grid">
+      <div class="card col6">
+        <div style="font-size:16px; font-weight:900;">個案資料</div>
+        <div style="margin-top:10px;">
+          <div class="k">名稱</div>
+          <div class="v" id="clientName">-</div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="k">Email</div>
+          <div class="v" id="clientEmail">-</div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="k">註冊時間</div>
+          <div class="v" id="clientCreatedAt">-</div>
+        </div>
+      </div>
+
+      <div class="card col6">
+        <div style="font-size:16px; font-weight:900;">目前目標</div>
+        <div style="margin-top:10px;">
+          <div class="k">每日步數</div>
+          <div class="v" id="gSteps">-</div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="k">每日分鐘</div>
+          <div class="v" id="gMinutes">-</div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="k">每日卡路里</div>
+          <div class="v" id="gCalories">-</div>
+        </div>
+      </div>
+
+      <div class="card col6">
+        <div style="font-size:16px; font-weight:900;">最新健康紀錄</div>
+        <div style="margin-top:10px;">
+          <div class="k">身高 / 體重 / BMI</div>
+          <div class="v" id="healthLine">-</div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="k">紀錄時間</div>
+          <div class="v" id="healthAt">-</div>
+        </div>
+      </div>
+
+      <div class="card col6">
+        <div style="font-size:16px; font-weight:900;">近 7 天運動彙總（按日）</div>
+        <div style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>日期</th><th>次數</th><th>分鐘</th><th>步數</th><th>卡路里</th><th>平均心率</th>
+              </tr>
+            </thead>
+            <tbody id="tBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 運動明細 -->
+      <div class="card" style="grid-column: 1 / -1;">
+        <div style="font-size:16px; font-weight:900;">最近運動紀錄（最多 30 筆）</div>
+        <div class="muted" style="margin-top:6px;">學員每次記錄的運動明細，可作為指派任務與回覆提問的依據。</div>
+        <div style="margin-top:10px; overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>時間</th><th>運動類型</th><th>分鐘</th><th>步數</th><th>心率</th><th>速度</th><th>卡路里</th>
+              </tr>
+            </thead>
+            <tbody id="actBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 回饋 -->
+      <div class="card col6">
+        <div style="font-size:16px; font-weight:900;">專家回饋（feedback）</div>
+        <div class="muted" style="margin-top:6px;">寫給個案的建議/提醒（純文字即可）。</div>
+        <div style="margin-top:10px;">
+          <textarea id="fbText" rows="5" placeholder="例如：這週運動量有進步，但步數偏低，建議每日快走 15 分鐘。"></textarea>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:10px;">
+          <button class="btn primary" id="btnSendFeedback" type="button">送出回饋</button>
+          <button class="btn gray" id="btnReloadNotes" type="button">重新載入回饋/任務</button>
+        </div>
+      </div>
+
+      <!-- 任務 -->
+      <div class="card col6">
+        <div style="font-size:16px; font-weight:900;">指派任務（task）</div>
+        <div class="muted" style="margin-top:6px;">最小版本：內容 + 目標（可留空） + 日期（可留空）。</div>
+
+        <div style="margin-top:10px;">
+          <div class="k">任務內容</div>
+          <input id="taskContent" placeholder="例如：每日快走 / 核心訓練 / 拉伸 10 分鐘" />
+        </div>
+
+        <div style="margin-top:10px;" class="row">
+          <div>
+            <div class="k">目標日期（可空）</div>
+            <input id="taskDate" type="date" />
+          </div>
+          <div>
+            <div class="k">目標分鐘（可空）</div>
+            <input id="taskMinutes" type="number" min="0" placeholder="30" />
+          </div>
+        </div>
+
+        <div style="margin-top:10px;" class="row">
+          <div>
+            <div class="k">目標步數（可空）</div>
+            <input id="taskSteps" type="number" min="0" placeholder="6000" />
+          </div>
+          <div>
+            <div class="k">目標卡路里（可空）</div>
+            <input id="taskCalories" type="number" min="0" placeholder="300" />
+          </div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <button class="btn primary" id="btnSendTask" type="button">送出任務</button>
+        </div>
+      </div>
+
+      <!-- 最近 notes -->
+      <div class="card col6">
+        <div style="font-size:16px; font-weight:900;">最近回饋 / 任務</div>
+        <div class="muted" style="margin-top:6px;">只顯示你（此專家）對此個案的 notes。</div>
+        <div id="notesBox" style="margin-top:10px;"></div>
+      </div>
+
+      <!-- Q&A -->
+      <div class="card col6">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div style="font-size:16px; font-weight:900;">學員提問 / 回覆</div>
+          <button class="miniBtn refresh" id="btnQRefresh" type="button">重新整理</button>
+        </div>
+        <div class="muted" style="margin-top:6px;">
+          只顯示此個案的提問（若顯示 403，代表此 expert 沒被指派此個案）。
+        </div>
+        <div class="err" id="qErr" style="margin-top:10px;"></div>
+        <div id="qList" style="margin-top:10px;" class="muted">載入中…</div>
+      </div>
+
+      <!-- debug -->
+      <div class="card col6" id="debugCard">
+        <div style="font-size:16px; font-weight:900;">偵錯資訊</div>
+        <div class="debug" id="debugBox" style="margin-top:10px;"></div>
+        <div class="muted" style="margin-top:6px;">提示：網址加上 ?clientId=1&debug=1 才顯示這格。</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "";
+
+    const params = new URLSearchParams(location.search);
+    const clientId = params.get("clientId");
+    const debugOn = params.get("debug") === "1";
+
+    const errBox = document.getElementById("errBox");
+    const title = document.getElementById("title");
+    const subtitle = document.getElementById("subtitle");
+
+    const debugCard = document.getElementById("debugCard");
+    const debugBox = document.getElementById("debugBox");
+    debugCard.style.display = debugOn ? "block" : "none";
+
+    // Q&A
+    const qErr = document.getElementById("qErr");
+    const qList = document.getElementById("qList");
+
+    document.getElementById("btnBack").addEventListener("click", () => {
+      location.href = "expert_dashboard.html";
+    });
+
+    document.getElementById("btnLogout").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      location.href = "auth.html";
+    });
+
+    document.getElementById("btnQRefresh").addEventListener("click", () => {
+      loadQuestions();
+    });
+
+    // ✅ 台灣時間格式化（解決「專家時間不對」）
+    function fmt(dt) {
+      if (!dt) return "-";
+      const s = String(dt).trim();
+
+      // 只有日期（例如 last_7_days 的 day），不要做時區轉換
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+      // SQLite 常見：YYYY-MM-DD HH:mm:ss（這通常是 UTC 的 CURRENT_TIMESTAMP）
+      if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(s)) {
+        const dUtc = new Date(s.replace(" ", "T") + "Z"); // 當成 UTC
+        if (!isNaN(dUtc.getTime())) {
+          return dUtc.toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false });
+        }
+        return s;
+      }
+
+      // ISO：YYYY-MM-DDTHH:mm:ss.000Z 或其他可被 Date() 解析的
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false });
+      }
+
+      // 解析不了就原樣顯示
+      return s;
+    }
+
+    async function fetchJSON(url, token, opts = {}) {
+      const res = await fetch(url, {
+        ...opts,
+        headers: {
+          "Content-Type": "application/json",
+          ...(opts.headers || {}),
+          Authorization: "Bearer " + token
+        }
+      });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    async function guardExpert(token) {
+      const meRes = await fetchJSON(`${API_BASE}/api/me`, token);
+      if (!meRes.ok) {
+        localStorage.removeItem("token");
+        location.href = "auth.html";
+        return null;
+      }
+      if (meRes.data.role !== "expert") {
+        location.href = "auth.html";
+        return null;
+      }
+      return meRes.data;
+    }
+
+    async function loadOverview(token, me) {
+      const ovRes = await fetchJSON(`${API_BASE}/api/expert/clients/${clientId}/overview`, token);
+      if (!ovRes.ok) {
+        errBox.textContent = `讀取個案概覽失敗 (${ovRes.status})\n${ovRes.data.message || ""}\n${ovRes.data.error || ""}`;
+        return null;
+      }
+
+      const ov = ovRes.data;
+      title.textContent = `個案概覽（ID: ${ov.client.id}）`;
+      subtitle.textContent = `專家：${me.username}｜個案：${ov.client.username}`;
+
+      document.getElementById("clientName").textContent = ov.client.username || "-";
+      document.getElementById("clientEmail").textContent = ov.client.email || "-";
+      document.getElementById("clientCreatedAt").textContent = fmt(ov.client.created_at);
+
+      document.getElementById("gSteps").textContent = ov.goals.daily_steps ?? "-";
+      document.getElementById("gMinutes").textContent = ov.goals.daily_minutes ?? "-";
+      document.getElementById("gCalories").textContent = ov.goals.daily_calories ?? "-";
+
+      if (ov.latest_health) {
+        document.getElementById("healthLine").textContent =
+          `${ov.latest_health.height ?? "-"} cm / ${ov.latest_health.weight ?? "-"} kg / BMI ${ov.latest_health.bmi ?? "-"}`;
+        document.getElementById("healthAt").textContent = fmt(ov.latest_health.created_at);
+      } else {
+        document.getElementById("healthLine").textContent = "尚無健康紀錄";
+        document.getElementById("healthAt").textContent = "-";
+      }
+
+      const rows = ov.last_7_days || [];
+      const tBody = document.getElementById("tBody");
+      if (rows.length === 0) {
+        tBody.innerHTML = `<tr><td colspan="6" style="color:#6b7280;">近 7 天尚無運動紀錄</td></tr>`;
+      } else {
+        tBody.innerHTML = rows.map(r => `
+          <tr>
+            <td>${fmt(r.day)}</td>
+            <td>${r.sessions ?? 0}</td>
+            <td>${r.total_minutes ?? 0}</td>
+            <td>${r.total_steps ?? 0}</td>
+            <td>${r.total_calories ?? 0}</td>
+            <td>${r.avg_heart_rate ? Number(r.avg_heart_rate).toFixed(0) : "-"}</td>
+          </tr>
+        `).join("");
+      }
+
+      const acts = ov.recent_activities || [];
+      const actBody = document.getElementById("actBody");
+      actBody.innerHTML = acts.length === 0
+        ? `<tr><td colspan="7" style="color:#6b7280;">尚無運動紀錄</td></tr>`
+        : acts.map(a => `
+          <tr>
+            <td>${fmt(a.created_at)}</td>
+            <td>${escapeHTML(a.activity_type || "-")}${a.source === "strava" ? "（Strava）" : a.source === "apple" ? "（Apple 健康）" : ""}</td>
+            <td>${a.duration ?? 0}</td>
+            <td>${a.steps ?? 0}</td>
+            <td>${a.heart_rate || "-"}</td>
+            <td>${a.speed || "-"}</td>
+            <td>${a.calories ?? 0}</td>
+          </tr>
+        `).join("");
+
+      if (debugOn) {
+        debugBox.textContent = `clientId(param)=${clientId} | expert=${me.username} | loaded_at=${new Date().toLocaleString("zh-TW", { timeZone:"Asia/Taipei", hour12:false })}`;
+      }
+
+      return ov;
+    }
+
+    function escapeHTML(s) {
+      return String(s || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function renderNotes(rows) {
+      const box = document.getElementById("notesBox");
+      if (!rows || rows.length === 0) {
+        box.innerHTML = `<div class="muted">目前尚無回饋/任務。</div>`;
+        return;
+      }
+      box.innerHTML = rows.map(n => {
+        const isTask = n.note_type === "task";
+        const badge = isTask ? `<span class="badge">task</span>` : `<span class="badge green">feedback</span>`;
+        const targets = [
+          n.target_date ? `日期 ${n.target_date}` : null,
+          (n.target_minutes != null) ? `分鐘 ${n.target_minutes}` : null,
+          (n.target_steps != null) ? `步數 ${n.target_steps}` : null,
+          (n.target_calories != null) ? `卡路里 ${n.target_calories}` : null
+        ].filter(Boolean).join("｜");
+
+        return `
+          <div class="noteItem">
+            <div>${badge}<span class="muted">${fmt(n.created_at)}</span></div>
+            <div style="margin-top:8px; font-weight:900;">${escapeHTML(n.content)}</div>
+            ${targets ? `<div class="muted" style="margin-top:8px;">目標：${escapeHTML(targets)}</div>` : ""}
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function loadNotes(token) {
+      const r = await fetchJSON(`${API_BASE}/api/expert/clients/${clientId}/notes?limit=20`, token);
+      if (!r.ok) {
+        errBox.textContent = `讀取 notes 失敗 (${r.status})\n${r.data.message || ""}\n${r.data.error || ""}`;
+        return;
+      }
+      renderNotes(r.data);
+    }
+
+    async function postNote(token, payload) {
+      const r = await fetchJSON(`${API_BASE}/api/expert/clients/${clientId}/notes`, token, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      return r;
+    }
+
+    /* ===== Q&A: render / load / reply ===== */
+    function setQError(msg){ qErr.textContent = msg || ""; }
+
+    function renderQuestions(rows){
+      if (!rows || rows.length === 0) {
+        qList.textContent = "目前沒有學員提問。";
+        return;
+      }
+
+      qList.innerHTML = rows.map(r => {
+        const st = (r.status || "open");
+        const badge = `<span class="badge ${st}">${st}</span>`;
+        const meta = `<div class="qaMeta mono">${fmt(r.created_at)} ｜學員ID:${r.client_user_id ?? "-"} ｜專家ID:${r.expert_user_id ?? "-"}</div>`;
+        const q = `<div class="qaQ">Q：${escapeHTML(r.question)}</div>`;
+
+        const a = r.reply
+          ? `<div class="qaA"><b>回覆：</b>${escapeHTML(r.reply)}<div class="qaMeta mono">${fmt(r.replied_at)}</div></div>`
+          : `
+            <div class="qaReplyRow">
+              <textarea id="reply_${r.id}" placeholder="輸入回覆內容…"></textarea>
+              <button class="miniBtn send" onclick="sendReply(${r.id})">送出回覆</button>
+            </div>
+          `;
+
+        return `<div class="qaItem">${badge}${meta}${q}${a}</div>`;
+      }).join("");
+    }
+
+    async function loadQuestions(){
+      setQError("");
+      qList.textContent = "載入中…";
+
+      const token = localStorage.getItem("token");
+      if (!token) return location.href = "auth.html";
+
+      const r = await fetchJSON(`${API_BASE}/api/expert/clients/${clientId}/questions?limit=50`, token);
+
+      if (!r.ok) {
+        setQError(`讀取提問失敗 (${r.status})\n${r.data.message || ""}\n${r.data.error || ""}`);
+        qList.innerHTML = `<div class="muted">（請先看上面錯誤訊息）</div>`;
+        return;
+      }
+
+      renderQuestions(Array.isArray(r.data) ? r.data : []);
+    }
+
+    window.sendReply = async function(qid){
+      const token = localStorage.getItem("token");
+      if (!token) return location.href = "auth.html";
+
+      const el = document.getElementById("reply_" + qid);
+      const reply = (el?.value || "").trim();
+      if (!reply) return alert("請輸入回覆內容");
+
+      const r = await fetchJSON(`${API_BASE}/api/expert/clients/${clientId}/questions/${qid}/reply`, token, {
+        method:"POST",
+        body: JSON.stringify({ reply })
+      });
+
+      if (!r.ok) {
+        alert(`回覆失敗 (${r.status})\n${r.data.message || ""}\n${r.data.error || ""}`);
+        return;
+      }
+
+      alert("已回覆！");
+      await loadQuestions();
+    }
+    /* ===== Q&A end ===== */
+
+    async function main() {
+      errBox.textContent = "";
+
+      if (!clientId) {
+        errBox.textContent = "缺少 clientId，請從專家 Dashboard 點選個案進入。";
+        return;
+      }
+
+      const token = localStorage.getItem("token");
+      if (!token) return location.href = "auth.html";
+
+      const me = await guardExpert(token);
+      if (!me) return;
+
+      await loadOverview(token, me);
+      await loadNotes(token);
+      await loadQuestions();
+
+      document.getElementById("btnReloadNotes").addEventListener("click", async () => {
+        await loadNotes(token);
+      });
+
+      document.getElementById("btnSendFeedback").addEventListener("click", async () => {
+        const text = document.getElementById("fbText").value.trim();
+        if (!text) return alert("回饋內容不能空白");
+
+        const r = await postNote(token, { note_type: "feedback", content: text });
+        if (!r.ok) return alert(r.data.message || "送出失敗");
+
+        document.getElementById("fbText").value = "";
+        alert("回饋已送出");
+        await loadNotes(token);
+      });
+
+      document.getElementById("btnSendTask").addEventListener("click", async () => {
+        const content = document.getElementById("taskContent").value.trim();
+        const target_date = document.getElementById("taskDate").value || null;
+        const target_minutes = document.getElementById("taskMinutes").value;
+        const target_steps = document.getElementById("taskSteps").value;
+        const target_calories = document.getElementById("taskCalories").value;
+
+        if (!content) return alert("任務內容不能空白");
+
+        const r = await postNote(token, {
+          note_type: "task",
+          content,
+          target_date,
+          target_minutes,
+          target_steps,
+          target_calories
+        });
+
+        if (!r.ok) return alert(r.data.message || "送出失敗");
+
+        alert("任務已送出");
+        document.getElementById("taskContent").value = "";
+        document.getElementById("taskDate").value = "";
+        document.getElementById("taskMinutes").value = "";
+        document.getElementById("taskSteps").value = "";
+        document.getElementById("taskCalories").value = "";
+        await loadNotes(token);
+      });
+    }
+
+    main();
+  </script>
+</main>
+<footer class="site-footer"><span>ProFit Health · 陪你累積每一天的進步</span><span>運動紀錄 ／ 健康管理 ／ 專業陪伴</span></footer>
+</body>
+</html>
